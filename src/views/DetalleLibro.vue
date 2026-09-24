@@ -1,6 +1,9 @@
 <template>
   <div class="contenedor">
-    <div v-if="libro" class="tarjeta">
+    <p v-if="loading" class="mensaje-vacio">Cargando catálogo…</p>
+    <p v-else-if="error" class="mensaje-error">{{ error }}</p>
+
+    <div v-else-if="libro" class="tarjeta">
       <span class="tarjeta-libro__categoria">{{ libro.categoria }} · {{ libro.tipo }}</span>
       <h2>{{ libro.titulo }}</h2>
       <p><strong>Autor:</strong> {{ libro.autor }}</p>
@@ -22,7 +25,7 @@
 </template>
 
 <script>
-import { obtenerLibroPorId } from '@/store/libros'
+import { mapGetters } from 'vuex'
 
 export default {
   name: 'DetalleLibro',
@@ -33,8 +36,9 @@ export default {
     }
   },
   computed: {
+    ...mapGetters('libros', ['loading', 'error', 'porId']),
     libro() {
-      return obtenerLibroPorId(this.id)
+      return this.porId(this.id)
     }
   }
 }
