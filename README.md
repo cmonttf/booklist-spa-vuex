@@ -31,6 +31,9 @@ y Vue Router, siguiendo el patrón **MVVM**.
 
 - Vue.js 3
 - Vue Router 4
+- Vuex 4 (estado global, módulo namespaced `libros`)
+- Axios (cliente HTTP centralizado)
+- json-server (API REST simulada para persistencia local)
 - JavaScript (ES2015+)
 - CSS puro
 - Webpack 5 (configuración manual, sin Vue CLI)
@@ -48,13 +51,24 @@ npm install
 
 ## Ejecución
 
-Modo desarrollo (con recarga en caliente):
+La app necesita **dos procesos corriendo en paralelo** (dos terminales): la API
+simulada (json-server) y el servidor de desarrollo de Webpack.
+
+**Terminal 1 — API simulada**, sirve `db.json` en `http://localhost:3001`:
+
+```bash
+npm run mock
+```
+
+**Terminal 2 — servidor de desarrollo**, con recarga en caliente:
 
 ```bash
 npm run serve
 ```
 
-La aplicación queda disponible en `http://localhost:8080`.
+La aplicación queda disponible en `http://localhost:8080`. Si `npm run mock`
+no está corriendo, la app sigue funcionando pero el catálogo no carga (se
+muestra un mensaje de error controlado en pantalla).
 
 Compilación de producción:
 
@@ -62,8 +76,10 @@ Compilación de producción:
 npm run build
 ```
 
-Los archivos generados se ubican en la carpeta `dist/` (no requiere servidor
-especial: `index.html` + `js/main.js` + `css/main.css`).
+Los archivos generados se ubican en la carpeta `dist/` (`index.html` +
+`js/main.js` + `css/main.css`). Al abrirlos, la app sigue necesitando la API
+simulada corriendo en `http://localhost:3001` (`npm run mock`), ya que el
+catálogo de libros se obtiene por HTTP y no queda embebido en el bundle.
 
 ## Estructura del proyecto
 
@@ -72,6 +88,8 @@ booklist-spa/
 ├── public/
 │   └── index.html                # Plantilla HTML base (un solo <div id="app">)
 ├── src/
+│   ├── api/
+│   │   └── index.js              # Instancia de Axios (baseURL de json-server)
 │   ├── assets/
 │   │   └── estilos.css           # Estilos globales (un solo sistema de diseño)
 │   ├── components/
@@ -81,13 +99,16 @@ booklist-spa/
 │   ├── router/
 │   │   └── index.js              # Definición de rutas (Vue Router)
 │   ├── store/
-│   │   └── libros.js             # Estado reactivo centralizado (Model)
+│   │   ├── index.js              # createStore(): une los módulos Vuex
+│   │   └── modules/
+│   │       └── libros.js         # Módulo Vuex namespaced (Model + acceso a la API)
 │   ├── views/
 │   │   ├── InicioView.vue        # "/" — dashboard de indicadores
 │   │   ├── ListaLibros.vue       # "/libros" — gestión del catálogo
 │   │   └── DetalleLibro.vue      # "/libros/:id" — detalle de un libro
 │   ├── App.vue                   # Layout raíz: navegación + <router-view>
-│   └── main.js                   # Punto de entrada, monta la app y el router
+│   └── main.js                   # Punto de entrada, monta app + router + store
+├── db.json                       # Base de datos simulada (json-server)
 ├── .browserslistrc
 ├── babel.config.js
 ├── webpack.config.js
@@ -100,20 +121,25 @@ booklist-spa/
 El proyecto sigue el patrón **MVVM**, apoyado en una arquitectura modular (en vez
 de un único archivo monolítico) para mantener responsabilidades separadas:
 
-- **Model** — el estado reactivo vive en un solo lugar: [src/store/libros.js](./src/store/libros.js).
-  Ahí se define el arreglo `libros` (envuelto en `reactive()` de Vue) y las
-  funciones que lo modifican: `obtenerLibros()`, `obtenerLibroPorId(id)`,
-  `agregarLibro(datos)` y `eliminarLibro(id)`. También exporta las constantes
-  `CATEGORIAS` (`Ficción`, `No Ficción`, `Técnico`) y `TIPOS_POR_CATEGORIA` (el
-  subtipo específico dentro de cada categoría, p. ej. `Novela`, `Ensayo`,
-  `Manual`). Cada libro tiene: `id`, `titulo`, `autor`, `categoria`, `tipo`,
-  `descripcion` y `fechaPublicacion`.
+- **Model** — el estado vive en un módulo Vuex namespaced:
+  [src/store/modules/libros.js](./src/store/modules/libros.js). Ahí se define
+  el `state` (`items`, `loading`, `error`), las `mutations` que lo modifican
+  (`SET_ITEMS`, `AGREGAR`, `EDITAR`, `ELIMINAR`, `SET_LOADING`, `SET_ERROR`),
+  las `actions` asíncronas que hablan con la API (`cargar`, `agregar`,
+  `editar`, `eliminar`) y los `getters` que exponen el estado de forma
+  derivada (`items`, `loading`, `error`, `porId`). También exporta las
+  constantes `CATEGORIAS` (`Ficción`, `No Ficción`, `Técnico`) y
+  `TIPOS_POR_CATEGORIA` (el subtipo específico dentro de cada categoría, p. ej.
+  `Novela`, `Ensayo`, `Manual`) — son configuración fija, no vienen de la API.
+  Cada libro tiene: `id`, `titulo`, `autor`, `categoria`, `tipo`, `descripcion`
+  y `fechaPublicacion`.
 
-  En vez de Vuex o Pinia se usa un **módulo reactivo simple**: como
-  `obtenerLibros()` devuelve siempre la misma referencia reactiva, todas las
-  vistas que la importan quedan sincronizadas automáticamente entre sí — el
-  estado se mantiene consistente al navegar entre `/`, `/libros` y
-  `/libros/:id`, sin necesidad de una librería externa de estado.
+  Como el estado vive en un único store Vuex compartido, todas las vistas que
+  lo consultan (`useGetters`/`mapGetters`) quedan sincronizadas
+  automáticamente entre sí — se mantiene consistente al navegar entre `/`,
+  `/libros` y `/libros/:id`, sin volver a pedir los datos a la API en cada
+  vista. Ver la sección [Persistencia de datos](#persistencia-de-datos--vuex--axios--json-server)
+  más abajo para el detalle de cómo se conecta con el backend simulado.
 
 - **View** — el `<template>` de cada componente `.vue`.
 
@@ -130,9 +156,11 @@ de un único archivo monolítico) para mantener responsabilidades separadas:
 | `LibroFormulario.vue` | — | `agregar-libro` (datos del nuevo libro) | Formulario completo: título, autor, categoría, tipo (dependiente de la categoría), año opcional y descripción opcional. Valida y muestra vista previa en vivo. |
 | `LibroFiltro.vue` | `filtros` (objeto `{ autor, categoria }`) | `actualizar:filtros` (nuevo objeto de filtros) | Campos de filtro por autor y categoría. Nunca modifica la prop directamente: emite el nuevo valor y el padre decide qué hacer con él. |
 
-Los componentes hijos **nunca mutan sus props**; toda comunicación hacia el
-padre se hace con eventos personalizados (`$emit`), y el padre es quien decide
-cómo actualizar el estado (llamando a las funciones del store).
+Los componentes hijos **nunca mutan sus props ni conocen a Vuex**; toda
+comunicación hacia el padre se hace con eventos personalizados (`$emit`), y es
+la vista contenedora (`ListaLibros.vue`) quien decide cómo actualizar el
+estado despachando la acción correspondiente (`dispatch('libros/agregar', …)`,
+`dispatch('libros/eliminar', …)`).
 
 ### Vistas (`src/views/`) y rutas
 
@@ -156,6 +184,64 @@ Libros) y el `<router-view />` donde se renderiza cada vista. También incluye
 un botón "Ayuda inicial" con el modificador `@click.once`, que muestra un
 mensaje de bienvenida únicamente la primera vez que se presiona.
 
+## Persistencia de datos — Vuex + Axios + json-server
+
+El catálogo ya no vive en un arreglo en memoria: se persiste en
+[db.json](./db.json) y se sirve mediante una API REST simulada
+(`json-server`), consumida a través de Vuex y Axios. El flujo completo:
+
+1. **`db.json`** (raíz del proyecto) — la "base de datos". Contiene un único
+   recurso, `libros`, con los 5 libros de ejemplo. `npm run mock` levanta
+   `json-server --port 3001 db.json`, que expone automáticamente:
+
+   | Método | Ruta | Uso |
+   |---|---|---|
+   | `GET` | `/libros` | Cargar el catálogo completo |
+   | `POST` | `/libros` | Crear un libro (el id lo asigna el propio json-server) |
+   | `PUT` | `/libros/:id` | Editar un libro existente |
+   | `DELETE` | `/libros/:id` | Eliminar un libro |
+
+   > La versión de `json-server` usada (`1.x`) asigna IDs como **strings**
+   > (`"1"`, `"aB3xZ..."`), no números autoincrementales. Por eso las
+   > comparaciones de id en el store usan `String(a) === String(b)` en vez de
+   > `===` directo, para que siempre funcionen sin importar el tipo.
+
+2. **[src/api/index.js](./src/api/index.js)** — instancia de Axios con el
+   `baseURL` (`http://localhost:3001`) centralizado en un único lugar. Ningún
+   otro archivo del proyecto importa `axios` directamente ni repite esa URL.
+
+3. **[src/store/modules/libros.js](./src/store/modules/libros.js)** — módulo
+   Vuex `namespaced: true` que es el único que importa `api`. Sus `actions`
+   son `async`/`await` y siempre pasan por `try/catch` + los flags
+   `loading`/`error` del estado, para que la interfaz pueda mostrar "Cargando…"
+   o un mensaje de error si `npm run mock` no está corriendo.
+
+4. **[src/store/index.js](./src/store/index.js)** — `createStore({ modules: { libros } })`.
+   Si el proyecto creciera con más recursos (por ejemplo `autores.js`), cada
+   uno sería un módulo separado con su propio namespace, igual que `libros.js`.
+
+5. **[src/main.js](./src/main.js)** — registra el store con `.use(store)`,
+   igual que se hace con el router.
+
+6. **[App.vue](./src/App.vue)** — despacha `dispatch('libros/cargar')` una
+   sola vez en su hook `created()`, al montar la aplicación completa. Así el
+   catálogo se pide **una única vez** sin importar por qué ruta entra el
+   usuario (`/`, `/libros` o `/libros/:id`), y de ahí en adelante todas las
+   vistas leen el mismo estado ya cargado.
+
+7. **Las vistas leen y despachan, nunca acceden a `axios` directamente:**
+   - `InicioView.vue` y `ListaLibros.vue` usan `mapGetters('libros', …)` para
+     leer `items`, `loading` y `error` como propiedades `computed`.
+   - `ListaLibros.vue` usa `mapActions('libros', …)` para exponer `agregar` y
+     `eliminar` como `methods`, que llama al recibir los eventos
+     `agregar-libro` y `eliminar` de sus componentes hijos.
+   - `DetalleLibro.vue` usa el getter parametrizado `porId` (`state => id =>
+     state.items.find(...)`) para buscar el libro de la ruta actual.
+
+   Esto mantiene el mismo principio de "componentes tontos" que ya tenía el
+   proyecto: `Libro.vue`, `LibroFormulario.vue` y `LibroFiltro.vue` no saben
+   que existe Vuex — solo reciben `props` y emiten eventos.
+
 ## Conceptos de Vue.js demostrados (por lección)
 
 ### Lección 1 — Introducción a Vue.js: dashboard de indicadores
@@ -171,8 +257,9 @@ catálogo real de libros:
 - `promedioLibrosPorCategoria` — total de libros dividido por la cantidad de categorías.
 
 Al agregar o eliminar un libro desde `/libros`, estos indicadores se recalculan
-solos porque `InicioView` lee el mismo arreglo reactivo del store
-(`obtenerLibros()`) que usa `ListaLibros`.
+solos porque `InicioView` lee el mismo estado de Vuex (`mapGetters('libros', …)`)
+que usa `ListaLibros` — ambos apuntan al mismo `state.items`, cargado una vez
+desde la API simulada.
 
 > **Nota:** la especificación original de este módulo pedía además un contador
 > reactivo genérico con botones +/-/reiniciar. Se reemplazó intencionalmente
@@ -235,10 +322,16 @@ Ver tabla de rutas más arriba. Rutas dinámicas con `props: true`, navegación
   en `store/`, configuración de rutas en `router/`), lo que facilita reutilizar
   `Libro.vue`, `LibroFormulario.vue` y `LibroFiltro.vue` desde distintas vistas
   si el proyecto creciera.
-- **Gestión del estado:** un módulo con `reactive()` de Vue
-  ([src/store/libros.js](./src/store/libros.js)) en lugar de Vuex/Pinia. Al ser
-  un único objeto reactivo importado por las vistas que lo necesitan, el
-  estado se mantiene consistente al navegar entre `/libros` y `/libros/:id`.
+- **Gestión del estado:** Vuex 4, con un único módulo namespaced `libros`
+  ([src/store/modules/libros.js](./src/store/modules/libros.js)). Se eligió
+  Vuex en vez del módulo reactivo simple usado en una etapa anterior del
+  proyecto porque el catálogo pasó a persistirse en una API real
+  (`json-server`) en lugar de vivir solo en memoria: Vuex separa con claridad
+  el estado (`state`), las mutaciones síncronas (`mutations`) y los efectos
+  asíncronos contra la API (`actions`), algo que un simple `reactive()` no
+  modela de forma tan explícita. Ver
+  [Persistencia de datos](#persistencia-de-datos--vuex--axios--json-server)
+  para el detalle completo.
 - **Comunicación entre componentes:** los hijos reciben datos únicamente
   mediante `props` y nunca los modifican directamente; para comunicar acciones
   hacia el padre usan eventos personalizados (`$emit`), por ejemplo `eliminar`
