@@ -97,7 +97,7 @@
 </template>
 
 <script>
-import { CATEGORIAS, TIPOS_POR_CATEGORIA } from '@/store/libros'
+import { CATEGORIAS, TIPOS_POR_CATEGORIA } from '@/store/modules/libros'
 
 const LIBRO_VACIO = {
   titulo: '',
