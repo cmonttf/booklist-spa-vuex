@@ -9,7 +9,10 @@
       <h2 class="seccion__titulo">Catálogo de libros</h2>
       <LibroFiltro :filtros="filtros" @actualizar:filtros="filtros = $event" />
 
-      <div v-if="librosFiltrados.length" class="rejilla-libros">
+      <p v-if="loading" class="mensaje-vacio">Cargando catálogo…</p>
+      <p v-else-if="error" class="mensaje-error">{{ error }}</p>
+
+      <div v-else-if="librosFiltrados.length" class="rejilla-libros">
         <Libro
           v-for="libro in librosFiltrados"
           :key="libro.id"
@@ -23,17 +26,16 @@
 </template>
 
 <script>
+import { mapGetters, mapActions } from 'vuex'
 import Libro from '@/components/Libro.vue'
 import LibroFormulario from '@/components/LibroFormulario.vue'
 import LibroFiltro from '@/components/LibroFiltro.vue'
-import { obtenerLibros, agregarLibro, eliminarLibro } from '@/store/libros'
 
 export default {
   name: 'ListaLibros',
   components: { Libro, LibroFormulario, LibroFiltro },
   data() {
     return {
-      libros: obtenerLibros(),
       filtros: {
         autor: '',
         categoria: ''
@@ -41,6 +43,7 @@ export default {
     }
   },
   computed: {
+    ...mapGetters('libros', { libros: 'items', loading: 'loading', error: 'error' }),
     librosFiltrados() {
       const autorBuscado = this.filtros.autor.trim().toLowerCase()
       return this.libros.filter(libro => {
@@ -51,11 +54,12 @@ export default {
     }
   },
   methods: {
+    ...mapActions('libros', { agregarLibro: 'agregar', eliminarLibro: 'eliminar' }),
     manejarAgregarLibro(datosLibro) {
-      agregarLibro(datosLibro)
+      this.agregarLibro(datosLibro)
     },
     manejarEliminarLibro(idLibro) {
-      eliminarLibro(idLibro)
+      this.eliminarLibro(idLibro)
     }
   }
 }
