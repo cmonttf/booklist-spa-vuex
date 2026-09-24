@@ -45,6 +45,11 @@ export default {
     mostrarBienvenida() {
       this.bienvenidaVisible = true
     }
+  },
+  created() {
+    // Se carga una sola vez al iniciar la app, sin importar por qué ruta
+    // entre el usuario: todas las vistas leen el mismo estado de Vuex.
+    this.$store.dispatch('libros/cargar')
   }
 }
 </script>
