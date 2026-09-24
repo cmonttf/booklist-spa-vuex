@@ -33,7 +33,7 @@
 </template>
 
 <script>
-import { CATEGORIAS } from '@/store/libros'
+import { CATEGORIAS } from '@/store/modules/libros'
 
 export default {
   name: 'LibroFiltro',
