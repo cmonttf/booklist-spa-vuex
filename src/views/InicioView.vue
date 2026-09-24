@@ -16,7 +16,10 @@
       <h2 class="seccion__titulo">📊 Resumen de gestión — Editorial Nova</h2>
       <p>Indicadores calculados en tiempo real a partir del catálogo (propiedades <code>computed</code>).</p>
 
-      <div class="indicadores-grid">
+      <p v-if="loading" class="mensaje-vacio">Cargando catálogo…</p>
+      <p v-else-if="error" class="mensaje-error">{{ error }}</p>
+
+      <div v-else class="indicadores-grid">
         <div class="tarjeta indicador">
           <h3>📚 Total de libros</h3>
           <p class="indicador__valor">{{ totalLibros }}</p>
@@ -53,7 +56,8 @@
 </template>
 
 <script>
-import { obtenerLibros, CATEGORIAS } from '@/store/libros'
+import { mapGetters } from 'vuex'
+import { CATEGORIAS } from '@/store/modules/libros'
 
 export default {
   name: 'InicioView',
@@ -63,13 +67,13 @@ export default {
       descripcionApp: 'Un gestor de libros interactivo construido con Vue.js, pensado para practicar componentes, reactividad y enrutamiento.',
       usuario: {
         nombre: 'Admin Editorial Nova'
-      },
-      // Referencia al mismo arreglo reactivo del store: los indicadores se
-      // recalculan solos al agregar/eliminar libros desde /libros.
-      libros: obtenerLibros()
+      }
     }
   },
   computed: {
+    // 'libros' (state.items), 'loading' y 'error' vienen del módulo Vuex
+    // 'libros' cargado por App.vue al iniciar la app.
+    ...mapGetters('libros', { libros: 'items', loading: 'loading', error: 'error' }),
     totalLibros() {
       return this.libros.length
     },
@@ -96,10 +100,18 @@ export default {
       return this.totalLibros / CATEGORIAS.length
     }
   },
+  watch: {
+    // La carga es asíncrona (dispatch en App.vue), así que el conteo real
+    // solo se conoce cuando 'loading' pasa de true a false.
+    loading(actual, anterior) {
+      if (anterior && !actual) {
+        console.log('📚 Libros iniciales:', this.libros.length)
+      }
+    }
+  },
   mounted() {
     console.log('✅ App montada correctamente')
     console.log('👤 Usuario:', this.usuario.nombre)
-    console.log('📚 Libros iniciales:', this.libros.length)
   }
 }
 </script>
