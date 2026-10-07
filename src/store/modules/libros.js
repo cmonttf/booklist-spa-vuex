@@ -60,15 +60,28 @@ export default {
       const { data } = await api.put(`/libros/${item.id}`, item)
       commit('EDITAR', data)
     },
-    async eliminar({ commit }, id) {
+    async eliminar({ commit, dispatch }, id) {
       await api.delete(`/libros/${id}`)
       commit('ELIMINAR', id)
+      dispatch('favoritos/quitar', id, { root: true })
     }
   },
   getters: {
     items: state => state.items,
     loading: state => state.loading,
     error: state => state.error,
-    porId: state => id => state.items.find(item => String(item.id) === String(id))
+    porId: state => id => state.items.find(item => String(item.id) === String(id)),
+    // Catálogo ya filtrado según el módulo 'filtros' (y 'favoritos' cuando se
+    // pide ver solo los favoritos). Las vistas no repiten esta lógica.
+    filtrados: (state, getters, rootState, rootGetters) => {
+      const { autor, categoria, soloFavoritos } = rootState.filtros
+      const autorBuscado = autor.trim().toLowerCase()
+      return state.items.filter(libro => {
+        const coincideAutor = !autorBuscado || libro.autor.toLowerCase().includes(autorBuscado)
+        const coincideCategoria = !categoria || libro.categoria === categoria
+        const coincideFavorito = !soloFavoritos || rootGetters['favoritos/esFavorito'](libro.id)
+        return coincideAutor && coincideCategoria && coincideFavorito
+      })
+    }
   }
 }
