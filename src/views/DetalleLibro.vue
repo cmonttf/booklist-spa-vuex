@@ -1,45 +1,65 @@
 <template>
   <div class="contenedor">
-    <p v-if="loading" class="mensaje-vacio">Cargando catálogo…</p>
-    <p v-else-if="error" class="mensaje-error">{{ error }}</p>
+    <el-skeleton v-if="loading" :rows="5" animated />
+    <el-alert
+      v-else-if="error"
+      type="error"
+      title="Error al cargar el catálogo"
+      :description="error"
+      show-icon
+      :closable="false"
+    />
 
-    <div v-else-if="libro" class="tarjeta">
-      <span class="tarjeta-libro__categoria">{{ libro.categoria }} · {{ libro.tipo }}</span>
+    <el-card v-else-if="libro" shadow="never" class="detalle-libro">
+      <div class="tarjeta-libro__cabecera">
+        <el-tag effect="plain">{{ libro.categoria }} · {{ libro.tipo }}</el-tag>
+        <el-button :type="favorito ? 'warning' : 'default'" @click="alternarFavorito">
+          {{ favorito ? '★ En favoritos' : '☆ Marcar como favorito' }}
+        </el-button>
+      </div>
       <h2>{{ libro.titulo }}</h2>
       <p><strong>Autor:</strong> {{ libro.autor }}</p>
       <p v-if="libro.fechaPublicacion"><strong>Año de publicación:</strong> {{ libro.fechaPublicacion }}</p>
       <p><strong>Descripción:</strong></p>
       <p>{{ libro.descripcion || 'Sin descripción disponible.' }}</p>
-      <router-link to="/libros" class="boton boton--secundario">
-        &larr; Volver al listado
+      <router-link v-slot="{ navigate }" to="/libros" custom>
+        <el-button @click="navigate">&larr; Volver al listado</el-button>
       </router-link>
-    </div>
+    </el-card>
 
-    <div v-else class="tarjeta mensaje-vacio">
-      <p>No se encontró ningún libro con el identificador "{{ id }}".</p>
-      <router-link to="/libros" class="boton boton--primario">
-        Volver al listado
-      </router-link>
-    </div>
+    <el-result
+      v-else
+      icon="warning"
+      title="Libro no encontrado"
+      :sub-title="`No se encontró ningún libro con el identificador &quot;${id}&quot;.`"
+    >
+      <template #extra>
+        <router-link v-slot="{ navigate }" to="/libros" custom>
+          <el-button type="primary" @click="navigate">Volver al listado</el-button>
+        </router-link>
+      </template>
+    </el-result>
   </div>
 </template>
 
-<script>
-import { mapGetters } from 'vuex'
+<script setup>
+import { computed } from 'vue'
+import { useStore } from 'vuex'
 
-export default {
-  name: 'DetalleLibro',
-  props: {
-    id: {
-      type: [String, Number],
-      required: true
-    }
-  },
-  computed: {
-    ...mapGetters('libros', ['loading', 'error', 'porId']),
-    libro() {
-      return this.porId(this.id)
-    }
+const props = defineProps({
+  id: {
+    type: [String, Number],
+    required: true
   }
+})
+
+const store = useStore()
+const loading = computed(() => store.getters['libros/loading'])
+const error = computed(() => store.getters['libros/error'])
+const libro = computed(() => store.getters['libros/porId'](props.id))
+const favorito = computed(() => store.getters['favoritos/esFavorito'](props.id))
+
+function alternarFavorito() {
+  store.dispatch('favoritos/alternar', props.id)
 }
 </script>
