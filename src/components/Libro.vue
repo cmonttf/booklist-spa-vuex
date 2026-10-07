@@ -79,3 +79,44 @@ const descripcionResumida = computed(() => {
 
 const tituloConfirmacion = computed(() => `¿Eliminar el libro "${props.libro.titulo}"?`)
 </script>
+
+<style scoped>
+/* :deep llega al cuerpo interno de el-card, que no pertenece a este componente */
+.tarjeta-libro :deep(.el-card__body) {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  height: 100%;
+}
+
+.tarjeta-libro p {
+  margin: 0;
+}
+
+.tarjeta-libro--destacada {
+  border-left: 4px solid var(--color-acento);
+}
+
+.tarjeta-libro__cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.tarjeta-libro__titulo {
+  margin: 0.3rem 0 0.2rem;
+}
+
+.tarjeta-libro__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: auto;
+  padding-top: 0.6rem;
+}
+
+.tarjeta-libro__acciones .el-button + .el-button {
+  margin-left: 0;
+}
+</style>
