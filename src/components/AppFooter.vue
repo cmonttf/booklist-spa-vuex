@@ -8,3 +8,12 @@
 <script setup>
 const anio = new Date().getFullYear()
 </script>
+
+<style scoped>
+.pie-pagina {
+  text-align: center;
+  padding: 1rem;
+  color: var(--el-text-color-secondary);
+  font-size: 0.85rem;
+}
+</style>
