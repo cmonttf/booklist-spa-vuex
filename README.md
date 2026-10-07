@@ -7,11 +7,14 @@ gestionar el catálogo de libros de **Editorial Nova**: agregar libros mediante 
 formulario reactivo, visualizarlos en un listado, filtrarlos por autor o categoría,
 eliminarlos, consultar el detalle individual de cada uno a través de una ruta
 dinámica, y monitorear el catálogo mediante un dashboard de indicadores en tiempo
-real.
+real. Permite además marcar libros como favoritos y alternar entre tema claro y
+oscuro.
 
 El proyecto fue desarrollado como trabajo académico para demostrar el uso de
-componentes, reactividad, directivas, formularios con `v-model`, manejo de eventos
-y Vue Router, siguiendo el patrón **MVVM**.
+componentes con **Composition API** (`<script setup>`), reactividad, directivas,
+formularios con `v-model`, manejo de eventos, Vue Router (con página 404),
+estado global con Vuex, pruebas automatizadas y una librería UI, siguiendo el
+patrón **MVVM**. El proyecto se gestiona con **Vue CLI** (`vue-cli-service`).
 
 ## Funcionalidades
 
@@ -21,25 +24,33 @@ y Vue Router, siguiendo el patrón **MVVM**.
 - Agregar libros mediante formulario con selects dependientes (categoría → tipo) y
   vista previa en tiempo real.
 - Validación de campos obligatorios (título, autor, categoría, tipo).
-- Filtrar libros por autor y por categoría.
+- Filtrar libros por autor, por categoría y "solo favoritos" (filtros guardados en Vuex).
+- Marcar y desmarcar libros como favoritos (se conservan al recargar la página).
 - Eliminar libros con confirmación.
 - Ver el detalle individual de cada libro mediante rutas dinámicas (`/libros/:id`).
 - Navegación 100% SPA con Vue Router (sin recargas de página).
 - Manejo correcto de identificadores de libro inexistentes.
+- Página 404 para cualquier URL que no exista.
+- Estados de carga, error (con botón "Reintentar") y catálogo vacío.
+- Tema claro/oscuro (respeta la preferencia del sistema y recuerda la elección).
+- Diseño responsive (escritorio y móvil).
 
 ## Tecnologías
 
-- Vue.js 3
-- Vue Router 4
-- Vuex 4 (estado global, módulo namespaced `libros`)
+- Vue.js 3 con **Composition API** (`<script setup>`, `ref`, `reactive`, `computed`, `watch`, `onMounted`)
+- Vue Router 4 (`useRoute`/`useRouter`, ruta comodín para la 404)
+- Vuex 4 (estado global con `useStore()`, módulos namespaced `libros`, `filtros` y `favoritos`)
 - Axios (cliente HTTP centralizado)
 - json-server (API REST simulada para persistencia local)
 - JavaScript (ES2015+)
-- CSS puro
+- Element Plus (librería de componentes UI, con modo oscuro) + `@element-plus/icons-vue`
+- Jest 27 + Vue Test Utils 2 (pruebas unitarias, vía `@vue/cli-plugin-unit-jest`)
+- Cypress 13 (pruebas end-to-end)
 - Vue CLI 5 (`@vue/cli-service`, basado en Webpack 5)
 
-**Este proyecto no utiliza Vite.** La compilación se realiza con Vue CLI
-(`vue-cli-service`, que usa Webpack internamente) y la compatibilidad de
+**Este proyecto no utiliza Vite ni un `webpack.config.js` propio.** Todo se
+ejecuta con Vue CLI (`vue-cli-service serve`, `build` y `test:unit`), que usa
+Webpack internamente y se ajusta solo desde `vue.config.js`. La compatibilidad de
 navegadores se define mediante el archivo `.browserslistrc` en la raíz del
 proyecto, leído tanto por Babel (`babel.config.js` con
 `@vue/cli-plugin-babel/preset`) como por el resto de herramientas de Vue CLI.
@@ -78,9 +89,64 @@ npm run build
 ```
 
 Los archivos generados se ubican en la carpeta `dist/` (`index.html` +
-`js/app.[hash].js` + `js/chunk-vendors.[hash].js` + `css/app.[hash].css`). Al abrirlos, la app sigue necesitando la API
+`js/app.[hash].js` + `js/chunk-vendors.[hash].js` + `css/app.[hash].css` +
+`css/chunk-vendors.[hash].css`). Al abrirlos, la app sigue necesitando la API
 simulada corriendo en `http://localhost:3001` (`npm run mock`), ya que el
 catálogo de libros se obtiene por HTTP y no queda embebido en el bundle.
+
+## Pruebas
+
+**Unitarias** (Jest + Vue Test Utils, con el plugin oficial de Vue CLI). No
+necesitan servidor ni API: Axios se reemplaza con `jest.mock('@/api')`.
+
+```bash
+npm run test:unit
+```
+
+**End-to-end** (Cypress). El script levanta solo el servidor de desarrollo,
+espera a que responda en `http://localhost:8080`, ejecuta Cypress en modo
+headless y apaga el servidor al terminar. La API se simula con `cy.intercept`
+y el fixture `tests/e2e/fixtures/libros.json`, así que **no** hace falta
+`npm run mock`.
+
+```bash
+npm run test:e2e        # headless, para consola/CI
+npm run cypress:open    # modo interactivo (requiere "npm run serve" en otra terminal)
+```
+
+| Archivo | Tipo | Qué valida |
+|---|---|---|
+| [tests/unit/Libro.spec.js](./tests/unit/Libro.spec.js) | Unitaria | Render correcto de la tarjeta (`Libro.vue`, equivalente a `<ProductCard>`): título, autor, categoría · tipo, año, descripción, estilo destacado, texto alternativo sin descripción, estado de favorito y evento `alternar-favorito`. |
+| [tests/unit/ListaLibros.spec.js](./tests/unit/ListaLibros.spec.js) | Unitaria | Respuesta visual ante error de API: con `api.get` rechazado se muestra la alerta de error y ninguna tarjeta; el botón "Reintentar" vuelve a cargar y muestra los libros. |
+| [tests/unit/store.spec.js](./tests/unit/store.spec.js) | Unitaria | Getter `libros/filtrados` (categoría, autor, solo favoritos), persistencia de favoritos en `localStorage` y limpieza del favorito al eliminar un libro. |
+| [tests/unit/NotFound.spec.js](./tests/unit/NotFound.spec.js) | Unitaria | La ruta comodín resuelve a la 404, que muestra la URL pedida y vuelve al inicio. |
+| [tests/e2e/specs/filtrar-libros.cy.js](./tests/e2e/specs/filtrar-libros.cy.js) | E2E | El usuario filtra por categoría y ve solo los resultados que coinciden; combina filtros, ve el estado vacío y limpia los filtros. También recorre la página 404. |
+
+Resultado de la última ejecución:
+
+```text
+$ npm run test:unit
+PASS tests/unit/store.spec.js
+PASS tests/unit/NotFound.spec.js
+PASS tests/unit/Libro.spec.js
+PASS tests/unit/ListaLibros.spec.js
+Test Suites: 4 passed, 4 total
+Tests:       11 passed, 11 total
+
+$ npm run test:e2e
+  Filtrar el catálogo de libros
+    ✓ muestra solo los libros de la categoría elegida
+    ✓ combina el filtro por autor y muestra el estado vacío si nada coincide
+  Página 404
+    ✓ muestra la 404 para una URL inexistente y permite volver al inicio
+  3 passing
+```
+
+> **Si Cypress falla con `bad option: --smoke-test`** al ejecutarlo desde la
+> terminal integrada de VS Code: esa terminal puede heredar la variable
+> `ELECTRON_RUN_AS_NODE=1`, que impide abrir Cypress. Ejecútalo desde una
+> terminal externa o elimina la variable primero
+> (PowerShell: `Remove-Item Env:ELECTRON_RUN_AS_NODE`).
 
 ## Estructura del proyecto
 
@@ -92,27 +158,41 @@ booklist-spa/
 │   ├── api/
 │   │   └── index.js              # Instancia de Axios (baseURL de json-server)
 │   ├── assets/
-│   │   └── estilos.css           # Estilos globales (un solo sistema de diseño)
+│   │   └── estilos.css           # Layout propio sobre las variables --el-* de Element Plus
 │   ├── components/
-│   │   ├── Libro.vue             # Tarjeta reutilizable de un libro
+│   │   ├── AppHeader.vue         # Encabezado: navegación, switch de tema, ayuda
+│   │   ├── AppFooter.vue         # Pie de página
+│   │   ├── Libro.vue             # Tarjeta reutilizable de un libro (ProductCard)
 │   │   ├── LibroFormulario.vue   # Formulario para agregar libros
-│   │   └── LibroFiltro.vue       # Filtro por autor y categoría
+│   │   └── LibroFiltro.vue       # Filtro por autor, categoría y favoritos
+│   ├── composables/
+│   │   └── useTema.js            # Tema claro/oscuro (estado compartido con ref)
 │   ├── router/
-│   │   └── index.js              # Definición de rutas (Vue Router)
+│   │   └── index.js              # Definición de rutas (Vue Router) + ruta 404
 │   ├── store/
-│   │   ├── index.js              # createStore(): une los módulos Vuex
+│   │   ├── index.js              # crearStore(): une los módulos + plugin de persistencia
 │   │   └── modules/
-│   │       └── libros.js         # Módulo Vuex namespaced (Model + acceso a la API)
+│   │       ├── libros.js         # Catálogo (Model + acceso a la API + getter filtrados)
+│   │       ├── filtros.js        # Criterios de búsqueda (autor, categoría, solo favoritos)
+│   │       └── favoritos.js      # Ids de libros favoritos
 │   ├── views/
 │   │   ├── InicioView.vue        # "/" — dashboard de indicadores
 │   │   ├── ListaLibros.vue       # "/libros" — gestión del catálogo
-│   │   └── DetalleLibro.vue      # "/libros/:id" — detalle de un libro
-│   ├── App.vue                   # Layout raíz: navegación + <router-view>
-│   └── main.js                   # Punto de entrada, monta app + router + store
+│   │   ├── DetalleLibro.vue      # "/libros/:id" — detalle de un libro
+│   │   └── NotFound.vue          # Cualquier otra ruta — página 404
+│   ├── App.vue                   # Layout raíz: <AppHeader> + <router-view> + <AppFooter>
+│   └── main.js                   # Punto de entrada: Element Plus + router + store
+├── tests/
+│   ├── unit/                     # Jest + Vue Test Utils (*.spec.js)
+│   └── e2e/
+│       ├── fixtures/libros.json  # Datos simulados para cy.intercept
+│       └── specs/                # Cypress (*.cy.js)
 ├── db.json                       # Base de datos simulada (json-server)
 ├── .browserslistrc
 ├── babel.config.js
 ├── vue.config.js                 # Configuración de Vue CLI
+├── jest.config.js                # Preset de Jest de Vue CLI
+├── cypress.config.js             # Configuración de Cypress
 ├── package.json
 └── README.md
 ```
@@ -122,13 +202,14 @@ booklist-spa/
 El proyecto sigue el patrón **MVVM**, apoyado en una arquitectura modular (en vez
 de un único archivo monolítico) para mantener responsabilidades separadas:
 
-- **Model** — el estado vive en un módulo Vuex namespaced:
-  [src/store/modules/libros.js](./src/store/modules/libros.js). Ahí se define
+- **Model** — el estado vive en tres módulos Vuex namespaced (`libros`,
+  `filtros` y `favoritos`, ver [Estado global](#estado-global--módulos-vuex)).
+  El principal es [src/store/modules/libros.js](./src/store/modules/libros.js). Ahí se define
   el `state` (`items`, `loading`, `error`), las `mutations` que lo modifican
   (`SET_ITEMS`, `AGREGAR`, `EDITAR`, `ELIMINAR`, `SET_LOADING`, `SET_ERROR`),
   las `actions` asíncronas que hablan con la API (`cargar`, `agregar`,
   `editar`, `eliminar`) y los `getters` que exponen el estado de forma
-  derivada (`items`, `loading`, `error`, `porId`). También exporta las
+  derivada (`items`, `loading`, `error`, `porId`, `filtrados`). También exporta las
   constantes `CATEGORIAS` (`Ficción`, `No Ficción`, `Técnico`) y
   `TIPOS_POR_CATEGORIA` (el subtipo específico dentro de cada categoría, p. ej.
   `Novela`, `Ensayo`, `Manual`) — son configuración fija, no vienen de la API.
@@ -136,7 +217,7 @@ de un único archivo monolítico) para mantener responsabilidades separadas:
   y `fechaPublicacion`.
 
   Como el estado vive en un único store Vuex compartido, todas las vistas que
-  lo consultan (`useGetters`/`mapGetters`) quedan sincronizadas
+  lo consultan (`useStore()` + `computed`) quedan sincronizadas
   automáticamente entre sí — se mantiene consistente al navegar entre `/`,
   `/libros` y `/libros/:id`, sin volver a pedir los datos a la API en cada
   vista. Ver la sección [Persistencia de datos](#persistencia-de-datos--vuex--axios--json-server)
@@ -144,46 +225,73 @@ de un único archivo monolítico) para mantener responsabilidades separadas:
 
 - **View** — el `<template>` de cada componente `.vue`.
 
-- **ViewModel** — los `methods` y `computed` de cada componente (por ejemplo
-  `librosFiltrados` en `ListaLibros.vue`, o los indicadores del dashboard en
-  `InicioView.vue`), que conectan el modelo con la vista sin lógica compleja
+- **ViewModel** — el bloque `<script setup>` de cada componente: `ref`,
+  `reactive`, `computed` y funciones (por ejemplo los indicadores del
+  dashboard en `InicioView.vue`), junto con los getters de Vuex (como
+  `libros/filtrados`), que conectan el modelo con la vista sin lógica compleja
   embebida en el template.
+
+### Composition API
+
+Todos los componentes y vistas usan `<script setup>` (Composition API). No
+queda ningún componente con Options API (`data`, `methods`, `computed:{}`).
+
+| Concepto | Dónde se usa |
+|---|---|
+| `ref` / `reactive` | `LibroFormulario.vue` (`reactive(nuevoLibro)`, `ref(errores)`), `App.vue` (`ref(bienvenidaVisible)`), `InicioView.vue` (`reactive(usuario)`) |
+| `computed` | Todas las vistas leen Vuex con `computed(() => store.getters[...])`; indicadores del dashboard; `tiposDisponibles` del formulario |
+| `watch` | `InicioView.vue` (detecta el fin de la carga) y `useTema.js` (aplica y guarda el tema) |
+| `onMounted` | `App.vue` (despacha `libros/cargar`) e `InicioView.vue` |
+| `defineProps` / `defineEmits` | `Libro.vue`, `LibroFiltro.vue`, `LibroFormulario.vue`, `AppHeader.vue`, `DetalleLibro.vue` |
+| `useStore()` (Vuex) | `App.vue`, `AppHeader.vue` y todas las vistas |
+| `useRoute()` / `useRouter()` | `NotFound.vue` |
+| Composable propio | [src/composables/useTema.js](./src/composables/useTema.js): `useTema()` devuelve un `ref` `oscuro` compartido por toda la app |
 
 ### Componentes reutilizables (`src/components/`)
 
 | Componente | Props que recibe | Eventos que emite | Responsabilidad |
 |---|---|---|---|
-| `Libro.vue` | `libro` (objeto), `mostrarBotonEliminar` (bool) | `eliminar` (id del libro) | Muestra una tarjeta con título, autor, categoría · tipo, año y descripción; pide confirmación antes de eliminar. |
+| `AppHeader.vue` | — | `ayuda` | Marca, navegación con contador de favoritos (`el-badge`), switch de tema claro/oscuro (`useTema`) y botón "Ayuda inicial" (`@click.once`). |
+| `AppFooter.vue` | — | — | Pie de página. |
+| `Libro.vue` | `libro` (objeto), `mostrarBotonEliminar` (bool), `esFavorito` (bool) | `eliminar`, `alternar-favorito` (id del libro) | Tarjeta (`el-card`) con título, autor, categoría · tipo, año y descripción; botón de favorito y confirmación (`el-popconfirm`) antes de eliminar. Cumple el rol de `<ProductCard>` de la consigna. |
 | `LibroFormulario.vue` | — | `agregar-libro` (datos del nuevo libro) | Formulario completo: título, autor, categoría, tipo (dependiente de la categoría), año opcional y descripción opcional. Valida y muestra vista previa en vivo. |
-| `LibroFiltro.vue` | `filtros` (objeto `{ autor, categoria }`) | `actualizar:filtros` (nuevo objeto de filtros) | Campos de filtro por autor y categoría. Nunca modifica la prop directamente: emite el nuevo valor y el padre decide qué hacer con él. |
+| `LibroFiltro.vue` | `filtros` (objeto `{ autor, categoria, soloFavoritos }`) | `actualizar:filtros` (nuevo objeto de filtros) | Campos de filtro por autor, categoría y "solo favoritos". Nunca modifica la prop directamente: emite el nuevo valor y el padre decide qué hacer con él. |
 
-Los componentes hijos **nunca mutan sus props ni conocen a Vuex**; toda
-comunicación hacia el padre se hace con eventos personalizados (`$emit`), y es
-la vista contenedora (`ListaLibros.vue`) quien decide cómo actualizar el
-estado despachando la acción correspondiente (`dispatch('libros/agregar', …)`,
-`dispatch('libros/eliminar', …)`).
+Los componentes de libros (`Libro`, `LibroFormulario`, `LibroFiltro`) **nunca
+mutan sus props ni conocen a Vuex**; toda comunicación hacia el padre se hace con
+eventos personalizados (`emit`), y es la vista contenedora (`ListaLibros.vue`)
+quien decide cómo actualizar el estado despachando la acción correspondiente
+(`libros/agregar`, `libros/eliminar`, `filtros/actualizar`,
+`favoritos/alternar`). La única excepción es `AppHeader.vue`, que lee el
+getter `favoritos/total` porque es parte del layout y no se reutiliza.
+
+En `/libros`, `ListaLibros.vue` cumple el rol de `<ProductList>`: recorre el
+getter `libros/filtrados` y muestra `el-skeleton` mientras carga, `el-alert`
+con botón "Reintentar" si la API falla y `el-empty` cuando no hay resultados.
 
 ### Vistas (`src/views/`) y rutas
 
-[src/router/index.js](./src/router/index.js) define las tres rutas requeridas:
+[src/router/index.js](./src/router/index.js) define las rutas de la app:
 
 | Ruta | Vista | Descripción |
 |---|---|---|
 | `/` | `InicioView.vue` | Bienvenida + dashboard de indicadores de gestión. |
 | `/libros` | `ListaLibros.vue` | Formulario para agregar, filtro, listado y eliminación. |
 | `/libros/:id` | `DetalleLibro.vue` | Detalle de un libro puntual, con `props: true` para recibir el `id` como prop en vez de leerlo manualmente desde `$route`. |
+| `/:pathMatch(.*)*` | `NotFound.vue` | **Página 404.** Ruta comodín (va al final) para cualquier URL que no exista; muestra la ruta pedida (`useRoute().fullPath`) y botones para volver al inicio o al catálogo. |
 
 `DetalleLibro.vue` busca el libro correspondiente en el store y, si no existe,
-muestra un mensaje claro junto con un enlace para volver al listado. Toda la
-navegación usa `<router-link>`, manteniendo el comportamiento SPA (sin recargas
+muestra un mensaje claro (`el-result`) junto con un botón para volver al
+listado. Toda la navegación usa `<router-link>` (con `custom` + `navigate`
+cuando el destino es un `el-button`) o `useRouter().push`, manteniendo el comportamiento SPA (sin recargas
 de página).
 
 ### `App.vue` — layout raíz
 
-Contiene el encabezado, la navegación principal (`<router-link>` a Inicio y
-Libros) y el `<router-view />` donde se renderiza cada vista. También incluye
-un botón "Ayuda inicial" con el modificador `@click.once`, que muestra un
-mensaje de bienvenida únicamente la primera vez que se presiona.
+Compone `<AppHeader>`, el `<router-view />` donde se renderiza cada vista y
+`<AppFooter>`. Cuando `AppHeader` emite `ayuda` (botón con `@click.once`),
+muestra un mensaje de bienvenida (`el-alert`) solo la primera vez. En
+`onMounted` despacha `libros/cargar`.
 
 ## Persistencia de datos — Vuex + Axios + json-server
 
@@ -217,25 +325,27 @@ El catálogo ya no vive en un arreglo en memoria: se persiste en
    `loading`/`error` del estado, para que la interfaz pueda mostrar "Cargando…"
    o un mensaje de error si `npm run mock` no está corriendo.
 
-4. **[src/store/index.js](./src/store/index.js)** — `createStore({ modules: { libros } })`.
-   Si el proyecto creciera con más recursos (por ejemplo `autores.js`), cada
-   uno sería un módulo separado con su propio namespace, igual que `libros.js`.
+4. **[src/store/index.js](./src/store/index.js)** — `crearStore()` arma el
+   store con los módulos `libros`, `filtros` y `favoritos` y exporta por
+   defecto una instancia. Las pruebas usan la fábrica para tener un store
+   limpio por caso.
 
 5. **[src/main.js](./src/main.js)** — registra el store con `.use(store)`,
    igual que se hace con el router.
 
-6. **[App.vue](./src/App.vue)** — despacha `dispatch('libros/cargar')` una
-   sola vez en su hook `created()`, al montar la aplicación completa. Así el
+6. **[App.vue](./src/App.vue)** — despacha `store.dispatch('libros/cargar')` una
+   sola vez en su hook `onMounted`, al montar la aplicación completa. Así el
    catálogo se pide **una única vez** sin importar por qué ruta entra el
    usuario (`/`, `/libros` o `/libros/:id`), y de ahí en adelante todas las
    vistas leen el mismo estado ya cargado.
 
 7. **Las vistas leen y despachan, nunca acceden a `axios` directamente:**
-   - `InicioView.vue` y `ListaLibros.vue` usan `mapGetters('libros', …)` para
-     leer `items`, `loading` y `error` como propiedades `computed`.
-   - `ListaLibros.vue` usa `mapActions('libros', …)` para exponer `agregar` y
-     `eliminar` como `methods`, que llama al recibir los eventos
-     `agregar-libro` y `eliminar` de sus componentes hijos.
+   - Todas obtienen el store con `useStore()` y leen los getters con
+     `computed(() => store.getters['libros/…'])`. `InicioView.vue` lee
+     `items`; `ListaLibros.vue` lee `filtrados`.
+   - `ListaLibros.vue` despacha `libros/agregar` y `libros/eliminar` al
+     recibir los eventos `agregar-libro` y `eliminar` de sus componentes
+     hijos, y muestra un `ElMessage` de éxito o error.
    - `DetalleLibro.vue` usa el getter parametrizado `porId` (`state => id =>
      state.items.find(...)`) para buscar el libro de la ruta actual.
 
@@ -243,7 +353,49 @@ El catálogo ya no vive en un arreglo en memoria: se persiste en
    proyecto: `Libro.vue`, `LibroFormulario.vue` y `LibroFiltro.vue` no saben
    que existe Vuex — solo reciben `props` y emiten eventos.
 
-## Conceptos de Vue.js demostrados (por lección)
+## Estado global — módulos Vuex
+
+| Módulo | State | Actions | Getters |
+|---|---|---|---|
+| [libros](./src/store/modules/libros.js) | `items`, `loading`, `error` | `cargar`, `agregar`, `editar`, `eliminar` (todas contra la API) | `items`, `loading`, `error`, `porId`, **`filtrados`** |
+| [filtros](./src/store/modules/filtros.js) | `autor`, `categoria`, `soloFavoritos` | `actualizar`, `limpiar` | `activos` |
+| [favoritos](./src/store/modules/favoritos.js) | `ids` | `alternar`, `quitar` | `ids`, `total`, `esFavorito` |
+
+- **`libros/filtrados`** combina los tres módulos: lee los criterios desde
+  `rootState.filtros` y consulta `rootGetters['favoritos/esFavorito']` cuando
+  está activo "solo favoritos". Las vistas no repiten la lógica de filtrado.
+- **Filtros en Vuex:** al estar en el store (y no en la vista), los filtros se
+  conservan al ir al detalle de un libro y volver al listado.
+- **Persistencia de favoritos:** el plugin `persistirFavoritos` de
+  [store/index.js](./src/store/index.js) se suscribe a las mutaciones
+  `favoritos/*` y guarda los ids en `localStorage`, sin poner efectos
+  secundarios dentro de las mutaciones. Al eliminar un libro, la acción
+  `libros/eliminar` despacha `favoritos/quitar` para no dejar ids huérfanos.
+
+## Librería UI y tema claro/oscuro
+
+Se usa **Element Plus**, registrado globalmente en [main.js](./src/main.js) con
+el idioma español (`element-plus/es/locale/lang/es`). Componentes usados:
+`el-card`, `el-button`, `el-input`, `el-select`, `el-checkbox`, `el-form`,
+`el-tag`, `el-badge`, `el-switch`, `el-popconfirm`, `el-alert`,
+`el-skeleton`, `el-empty`, `el-result` y `ElMessage`.
+
+- **Tema claro/oscuro:** el composable
+  [useTema.js](./src/composables/useTema.js) guarda un `ref` `oscuro` y, con
+  un `watch`, agrega o quita la clase `dark` en `<html>`, que activa las
+  variables oscuras de Element Plus
+  (`element-plus/theme-chalk/dark/css-vars.css`). El valor inicial sale de la
+  elección guardada en `localStorage` o, si no hay, de
+  `prefers-color-scheme`. `main.js` importa el composable antes de montar la
+  app para evitar un parpadeo. El switch está en `AppHeader.vue`.
+- **Estilos propios:** [estilos.css](./src/assets/estilos.css) solo define el
+  layout (encabezado, grillas, tarjetas) y usa las variables `--el-*` de
+  Element Plus en vez de colores fijos, así que todo cambia junto con el tema.
+  También redefine `--el-color-primary` con el azul de la marca.
+- **Responsive:** grillas con `auto-fill`/`auto-fit` + `minmax()` y un
+  breakpoint a 600px que apila el encabezado y los filtros.
+
+## Conceptos de Vue.js demostrados (módulo anterior, por lección)
 
 ### Lección 1 — Introducción a Vue.js: dashboard de indicadores
 
@@ -258,7 +410,7 @@ catálogo real de libros:
 - `promedioLibrosPorCategoria` — total de libros dividido por la cantidad de categorías.
 
 Al agregar o eliminar un libro desde `/libros`, estos indicadores se recalculan
-solos porque `InicioView` lee el mismo estado de Vuex (`mapGetters('libros', …)`)
+solos porque `InicioView` lee el mismo estado de Vuex (`useStore()` + `computed`)
 que usa `ListaLibros` — ambos apuntan al mismo `state.items`, cargado una vez
 desde la API simulada.
 
@@ -274,13 +426,13 @@ desde la API simulada.
 - `Libro.vue` es el componente reutilizable que recibe un libro completo
   mediante `props` y muestra título, autor, categoría, tipo y descripción.
 - **v-bind:** se usa en su forma explícita (no la abreviada `:`) para clases
-  dinámicas y atributos de datos en `Libro.vue`, y para el `value` de los
-  campos de `LibroFiltro.vue`.
-- **v-for:** el listado se recorre con `v-for="libro in librosFiltrados"`
+  dinámicas y atributos de datos en `Libro.vue`, y para el `model-value` de
+  los campos de `LibroFiltro.vue`.
+- **v-for:** el listado se recorre con `v-for="libro in libros"`
   usando `libro.id` como `key`.
 - **v-if / v-else:** controla la descripción del libro cuando falta, el estado
-  encontrado/no encontrado en `DetalleLibro.vue`, y el mensaje "No hay libros
-  disponibles." cuando el listado filtrado queda vacío.
+  encontrado/no encontrado en `DetalleLibro.vue`, y los estados cargando /
+  error / vacío del listado.
 - **v-show:** se usa en el panel de vista previa del formulario, en el mensaje
   de bienvenida de `App.vue` (mostrado con `.once`) y en el botón "Limpiar
   filtros".
@@ -290,7 +442,7 @@ desde la API simulada.
 `LibroFormulario.vue` contiene input de título, input de autor, select de
 categoría, select de tipo (dependiente de la categoría elegida, según
 `TIPOS_POR_CATEGORIA`), input opcional de año de publicación y textarea de
-descripción, todos conectados con `v-model` a un objeto `nuevoLibro` reactivo.
+descripción, todos conectados con `v-model` a un objeto `nuevoLibro` creado con `reactive()`.
 La vista previa se actualiza automáticamente mientras el usuario escribe,
 mostrando valores alternativos ("Sin título", "Autor no especificado", etc.)
 cuando un campo está vacío. La validación impide agregar un libro si falta
@@ -305,16 +457,16 @@ título, autor, categoría o tipo, mostrando mensajes claros por campo.
   autor permite agregar un libro presionando Enter, sin que el navegador
   dispare además el envío nativo del formulario (lo que provocaría una
   duplicación accidental del libro).
-- `.once` se usa en el botón "Ayuda inicial" de `App.vue`: solo la primera vez
-  que se presiona se muestra el mensaje de bienvenida.
-- La eliminación se dispara con `@click`, pide confirmación (`window.confirm`)
-  y actualiza el arreglo reactivo mediante `splice`.
+- `.once` se usa en el botón "Ayuda inicial" de `AppHeader.vue`: solo la
+  primera vez que se presiona se muestra el mensaje de bienvenida.
+- La eliminación pide confirmación (`el-popconfirm`) y despacha la acción
+  `libros/eliminar`.
 
 ### Lección 5 — Vue Router
 
 Ver tabla de rutas más arriba. Rutas dinámicas con `props: true`, navegación
-100% con `<router-link>`, manejo explícito de IDs inexistentes en
-`DetalleLibro.vue`.
+100% SPA, manejo explícito de IDs inexistentes en `DetalleLibro.vue` y página
+404 (`NotFound.vue`) para cualquier otra URL.
 
 ## Decisiones técnicas
 
@@ -323,8 +475,14 @@ Ver tabla de rutas más arriba. Rutas dinámicas con `props: true`, navegación
   en `store/`, configuración de rutas en `router/`), lo que facilita reutilizar
   `Libro.vue`, `LibroFormulario.vue` y `LibroFiltro.vue` desde distintas vistas
   si el proyecto creciera.
-- **Gestión del estado:** Vuex 4, con un único módulo namespaced `libros`
-  ([src/store/modules/libros.js](./src/store/modules/libros.js)). Se eligió
+- **Composition API con `<script setup>`:** permite agrupar por funcionalidad
+  (estado, derivados y acciones juntos) en vez de repartir la lógica entre
+  `data`, `computed` y `methods`, y extraer lógica reutilizable a
+  composables como `useTema()`. Con Vuex se usa `useStore()`, la forma
+  recomendada en Composition API (los helpers `mapGetters`/`mapActions`
+  dependen de `this` y son propios de Options API).
+- **Gestión del estado:** Vuex 4, con tres módulos namespaced (`libros`,
+  `filtros`, `favoritos`; ver [Estado global](#estado-global--módulos-vuex)). Se eligió
   Vuex en vez del módulo reactivo simple usado en una etapa anterior del
   proyecto porque el catálogo pasó a persistirse en una API real
   (`json-server`) en lugar de vivir solo en memoria: Vuex separa con claridad
@@ -334,14 +492,15 @@ Ver tabla de rutas más arriba. Rutas dinámicas con `props: true`, navegación
   [Persistencia de datos](#persistencia-de-datos--vuex--axios--json-server)
   para el detalle completo.
 - **Comunicación entre componentes:** los hijos reciben datos únicamente
-  mediante `props` y nunca los modifican directamente; para comunicar acciones
-  hacia el padre usan eventos personalizados (`$emit`), por ejemplo `eliminar`
+  mediante `props` (`defineProps`) y nunca los modifican directamente; para
+  comunicar acciones hacia el padre usan eventos personalizados (`defineEmits`), por ejemplo `eliminar`
   en `Libro.vue` o `agregar-libro` en `LibroFormulario.vue`.
 - **Por qué Vue CLI y no Vite:** el proyecto exige explícitamente una
   configuración basada en Vue CLI. El build se gestiona con `@vue/cli-service`
-  (scripts `vue-cli-service serve` / `vue-cli-service build`) junto a los
-  plugins oficiales `@vue/cli-plugin-babel`, `@vue/cli-plugin-router` y
-  `@vue/cli-plugin-vuex`. Los ajustes propios (puerto, título de la página)
+  (scripts `vue-cli-service serve` / `build` / `test:unit`) junto a los
+  plugins oficiales `@vue/cli-plugin-babel`, `@vue/cli-plugin-router`,
+  `@vue/cli-plugin-vuex` y `@vue/cli-plugin-unit-jest`. No hay
+  `webpack.config.js`. Los ajustes propios (puerto, título de la página)
   viven en `vue.config.js` mediante `defineConfig`, sin depender del
   ecosistema Vite en ningún punto (no se usa `vite.config.js` ni
   `import.meta.env`; el router usa `process.env.BASE_URL`, propio de Vue CLI).
@@ -350,3 +509,23 @@ Ver tabla de rutas más arriba. Rutas dinámicas con `props: true`, navegación
   usa `@vue/cli-plugin-babel/preset` (basado en `@babel/preset-env`), que lee automáticamente este archivo para decidir
   qué transformaciones de sintaxis aplicar, evitando duplicar esa
   configuración en `package.json` o en herramientas específicas de Vite.
+- **Por qué Element Plus (y no Vuetify):** Element Plus se registra con un solo
+  `app.use()` y funciona con Vue CLI/Webpack sin plugins de compilación
+  adicionales (Vuetify 3 recomienda `webpack-plugin-vuetify`). Además trae
+  modo oscuro por variables CSS, que cubre el requisito de tema claro/oscuro
+  sin duplicar estilos. Se importa completo por simplicidad (`chunk-vendors`
+  pesa ~380 KiB gzip); si hiciera falta optimizar, el siguiente paso sería
+  importar solo los componentes usados con `unplugin-vue-components`.
+- **Por qué no se migró a Nuxt ni Quasar (opcional en la consigna):** la app es
+  una SPA de catálogo sin necesidad de SEO ni render en servidor (lo que
+  justificaría Nuxt) y no hay un requisito concreto de publicarla como app
+  móvil o de escritorio (lo que justificaría Quasar). Migrar habría reemplazado
+  Vue CLI, que la consigna pide explícitamente. Si más adelante se quisiera
+  empaquetar para móvil/escritorio, Quasar sería la opción natural porque
+  reutiliza los mismos componentes `.vue` y Vuex.
+- **Pruebas:** Jest se integra con `@vue/cli-plugin-unit-jest` (preset oficial
+  de Vue CLI). `jest.config.js` amplía `transformIgnorePatterns` para
+  transformar `@vueuse`, dependencia de Element Plus que solo se publica como
+  ES modules. Para e2e se eligió Cypress con `start-server-and-test` y
+  `cy.intercept`, de modo que la prueba es repetible y no depende de
+  `db.json` ni de `json-server`.
