@@ -4,14 +4,21 @@
   "description": "BookList SPA - Gestor de libros interactivo con Vue.js",
   "private": true,
   "scripts": {
-    "serve": "vue-cli-service serve",
+    "serve": "vue-cli-service serve --open",
     "build": "vue-cli-service build",
     "mock": "json-server --port 3001 db.json",
+    "test:unit": "vue-cli-service test:unit",
+    "test:e2e": "start-server-and-test serve:e2e http-get://localhost:8080 cypress:run",
+    "serve:e2e": "vue-cli-service serve --port 8080",
+    "cypress:run": "cypress run",
+    "cypress:open": "cypress open",
     "lint": "echo \"(sin linter configurado)\""
   },
   "dependencies": {
+    "@element-plus/icons-vue": "^2.3.2",
     "axios": "^1.20.0",
     "core-js": "^3.50.0",
+    "element-plus": "^2.14.7",
     "vue": "^3.4.21",
     "vue-router": "^4.3.0",
     "vuex": "^4.1.0"
@@ -20,8 +27,15 @@
     "@babel/core": "^7.29.7",
     "@vue/cli-plugin-babel": "~5.0.8",
     "@vue/cli-plugin-router": "~5.0.8",
+    "@vue/cli-plugin-unit-jest": "~5.0.8",
     "@vue/cli-plugin-vuex": "~5.0.8",
     "@vue/cli-service": "~5.0.8",
-    "json-server": "^1.0.0-beta.15"
+    "@vue/test-utils": "^2.5.1",
+    "@vue/vue3-jest": "^27.0.0",
+    "babel-jest": "^27.5.1",
+    "cypress": "^13.17.0",
+    "jest": "^27.5.1",
+    "json-server": "^1.0.0-beta.15",
+    "start-server-and-test": "^3.0.12"
   }
 }
