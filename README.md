@@ -36,12 +36,13 @@ y Vue Router, siguiendo el patrón **MVVM**.
 - json-server (API REST simulada para persistencia local)
 - JavaScript (ES2015+)
 - CSS puro
-- Webpack 5 (configuración manual, sin Vue CLI)
+- Vue CLI 5 (`@vue/cli-service`, basado en Webpack 5)
 
-**Este proyecto no utiliza Vite.** La compilación se realiza con Webpack y la
-compatibilidad de navegadores se define mediante el archivo `.browserslistrc` en la
-raíz del proyecto, leído tanto por Babel (`babel.config.js` con
-`@babel/preset-env`) como por cualquier otra herramienta que lo requiera.
+**Este proyecto no utiliza Vite.** La compilación se realiza con Vue CLI
+(`vue-cli-service`, que usa Webpack internamente) y la compatibilidad de
+navegadores se define mediante el archivo `.browserslistrc` en la raíz del
+proyecto, leído tanto por Babel (`babel.config.js` con
+`@vue/cli-plugin-babel/preset`) como por el resto de herramientas de Vue CLI.
 
 ## Instalación
 
@@ -52,7 +53,7 @@ npm install
 ## Ejecución
 
 La app necesita **dos procesos corriendo en paralelo** (dos terminales): la API
-simulada (json-server) y el servidor de desarrollo de Webpack.
+simulada (json-server) y el servidor de desarrollo de Vue CLI.
 
 **Terminal 1 — API simulada**, sirve `db.json` en `http://localhost:3001`:
 
@@ -77,7 +78,7 @@ npm run build
 ```
 
 Los archivos generados se ubican en la carpeta `dist/` (`index.html` +
-`js/main.js` + `css/main.css`). Al abrirlos, la app sigue necesitando la API
+`js/app.[hash].js` + `js/chunk-vendors.[hash].js` + `css/app.[hash].css`). Al abrirlos, la app sigue necesitando la API
 simulada corriendo en `http://localhost:3001` (`npm run mock`), ya que el
 catálogo de libros se obtiene por HTTP y no queda embebido en el bundle.
 
@@ -111,7 +112,7 @@ booklist-spa/
 ├── db.json                       # Base de datos simulada (json-server)
 ├── .browserslistrc
 ├── babel.config.js
-├── webpack.config.js
+├── vue.config.js                 # Configuración de Vue CLI
 ├── package.json
 └── README.md
 ```
@@ -336,14 +337,16 @@ Ver tabla de rutas más arriba. Rutas dinámicas con `props: true`, navegación
   mediante `props` y nunca los modifican directamente; para comunicar acciones
   hacia el padre usan eventos personalizados (`$emit`), por ejemplo `eliminar`
   en `Libro.vue` o `agregar-libro` en `LibroFormulario.vue`.
-- **Por qué no se utilizó Vite:** el proyecto exige explícitamente una
-  configuración basada en Webpack/Vue CLI. Se optó por una configuración
-  manual de Webpack 5 (`webpack.config.js`) con `vue-loader` y `babel-loader`
-  en lugar de `vue create`, para tener control total sobre el pipeline de
-  build sin depender del ecosistema Vite en ningún punto (no se usa
-  `vite.config.js` ni `import.meta.env`).
+- **Por qué Vue CLI y no Vite:** el proyecto exige explícitamente una
+  configuración basada en Vue CLI. El build se gestiona con `@vue/cli-service`
+  (scripts `vue-cli-service serve` / `vue-cli-service build`) junto a los
+  plugins oficiales `@vue/cli-plugin-babel`, `@vue/cli-plugin-router` y
+  `@vue/cli-plugin-vuex`. Los ajustes propios (puerto, título de la página)
+  viven en `vue.config.js` mediante `defineConfig`, sin depender del
+  ecosistema Vite en ningún punto (no se usa `vite.config.js` ni
+  `import.meta.env`; el router usa `process.env.BASE_URL`, propio de Vue CLI).
 - **Uso de `.browserslistrc`:** define el rango de navegadores objetivo
   (`> 0.5%`, `last 2 versions`, `not dead`, `not IE 11`). `babel.config.js`
-  usa `@babel/preset-env`, que lee automáticamente este archivo para decidir
+  usa `@vue/cli-plugin-babel/preset` (basado en `@babel/preset-env`), que lee automáticamente este archivo para decidir
   qué transformaciones de sintaxis aplicar, evitando duplicar esa
   configuración en `package.json` o en herramientas específicas de Vite.
