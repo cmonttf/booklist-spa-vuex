@@ -8,10 +8,8 @@
     "build": "vue-cli-service build",
     "mock": "json-server --port 3001 db.json",
     "test:unit": "vue-cli-service test:unit",
-    "test:e2e": "start-server-and-test serve:e2e http-get://localhost:8080 cypress:run",
-    "serve:e2e": "vue-cli-service serve --port 8080",
-    "cypress:run": "cypress run",
-    "cypress:open": "cypress open",
+    "test:e2e": "vue-cli-service test:e2e --headless",
+    "test:e2e:open": "vue-cli-service test:e2e",
     "lint": "echo \"(sin linter configurado)\""
   },
   "dependencies": {
@@ -26,6 +24,7 @@
   "devDependencies": {
     "@babel/core": "^7.29.7",
     "@vue/cli-plugin-babel": "~5.0.8",
+    "@vue/cli-plugin-e2e-cypress": "~5.0.8",
     "@vue/cli-plugin-router": "~5.0.8",
     "@vue/cli-plugin-unit-jest": "~5.0.8",
     "@vue/cli-plugin-vuex": "~5.0.8",
@@ -35,7 +34,6 @@
     "babel-jest": "^27.5.1",
     "cypress": "^13.17.0",
     "jest": "^27.5.1",
-    "json-server": "^1.0.0-beta.15",
-    "start-server-and-test": "^3.0.12"
+    "json-server": "^1.0.0-beta.15"
   }
 }
