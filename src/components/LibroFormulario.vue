@@ -1,92 +1,84 @@
 <template>
   <div>
-    <form class="formulario" @submit.prevent="manejarEnvio">
-      <div class="campo">
-        <label for="titulo">Título</label>
-        <input
-          id="titulo"
-          v-model="nuevoLibro.titulo"
-          type="text"
-          placeholder="Ej: El principito"
-          @keydown.enter.prevent
-          @keyup.enter="manejarEnvio"
-        />
+    <el-form label-position="top" class="formulario" @submit.prevent="manejarEnvio">
+      <div class="formulario__grilla">
+        <el-form-item label="Título" for="titulo" required>
+          <el-input
+            id="titulo"
+            v-model="nuevoLibro.titulo"
+            placeholder="Ej: El principito"
+            @keydown.enter.prevent
+            @keyup.enter="manejarEnvio"
+          />
+        </el-form-item>
+
+        <el-form-item label="Autor" for="autor" required>
+          <el-input
+            id="autor"
+            v-model="nuevoLibro.autor"
+            placeholder="Ej: Antoine de Saint-Exupéry"
+            @keydown.enter.prevent
+            @keyup.enter="manejarEnvio"
+          />
+        </el-form-item>
+
+        <el-form-item label="Categoría" required>
+          <el-select
+            v-model="nuevoLibro.categoria"
+            placeholder="Selecciona una categoría"
+            aria-label="Categoría"
+            @change="nuevoLibro.tipo = ''"
+          >
+            <el-option v-for="categoria in CATEGORIAS" :key="categoria" :label="categoria" :value="categoria" />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="Tipo" required>
+          <el-select
+            v-model="nuevoLibro.tipo"
+            :disabled="!nuevoLibro.categoria"
+            :placeholder="nuevoLibro.categoria ? 'Selecciona un tipo' : 'Primero elige una categoría'"
+            aria-label="Tipo"
+          >
+            <el-option v-for="tipo in tiposDisponibles" :key="tipo" :label="tipo" :value="tipo" />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="Año de publicación (opcional)" for="fechaPublicacion">
+          <el-input id="fechaPublicacion" v-model="nuevoLibro.fechaPublicacion" placeholder="Ej: 1943" />
+        </el-form-item>
       </div>
 
-      <div class="campo">
-        <label for="autor">Autor</label>
-        <input
-          id="autor"
-          v-model="nuevoLibro.autor"
-          type="text"
-          placeholder="Ej: Antoine de Saint-Exupéry"
-          @keydown.enter.prevent
-          @keyup.enter="manejarEnvio"
-        />
-      </div>
-
-      <div class="campo">
-        <label for="categoria">Categoría</label>
-        <select id="categoria" v-model="nuevoLibro.categoria" @change="nuevoLibro.tipo = ''">
-          <option value="" disabled>Selecciona una categoría</option>
-          <option v-for="categoria in categorias" :key="categoria" :value="categoria">
-            {{ categoria }}
-          </option>
-        </select>
-      </div>
-
-      <div class="campo">
-        <label for="tipo">Tipo</label>
-        <select id="tipo" v-model="nuevoLibro.tipo" :disabled="!nuevoLibro.categoria">
-          <option value="" disabled>
-            {{ nuevoLibro.categoria ? 'Selecciona un tipo' : 'Primero elige una categoría' }}
-          </option>
-          <option v-for="tipo in tiposDisponibles" :key="tipo" :value="tipo">
-            {{ tipo }}
-          </option>
-        </select>
-      </div>
-
-      <div class="campo">
-        <label for="fechaPublicacion">Año de publicación (opcional)</label>
-        <input
-          id="fechaPublicacion"
-          v-model="nuevoLibro.fechaPublicacion"
-          type="text"
-          placeholder="Ej: 1943"
-        />
-      </div>
-
-      <div class="campo">
-        <label for="descripcion">Descripción (opcional)</label>
-        <textarea
+      <el-form-item label="Descripción (opcional)" for="descripcion">
+        <el-input
           id="descripcion"
           v-model="nuevoLibro.descripcion"
+          type="textarea"
+          :rows="3"
           placeholder="Breve descripción del libro"
-        ></textarea>
-      </div>
+        />
+      </el-form-item>
 
-      <p v-for="error in errores" :key="error" class="mensaje-error">
-        {{ error }}
-      </p>
+      <el-alert
+        v-for="error in errores"
+        :key="error"
+        :title="error"
+        type="error"
+        show-icon
+        :closable="false"
+        class="formulario__error"
+      />
 
-      <div>
-        <button type="submit" class="boton boton--primario">
-          Agregar libro
-        </button>
-        <button
-          type="button"
-          class="boton boton--secundario"
-          style="margin-left: 0.5rem;"
-          @click="mostrarVistaPrevia = !mostrarVistaPrevia"
-        >
+      <div class="formulario__acciones">
+        <el-button type="primary" native-type="submit">Agregar libro</el-button>
+        <el-button @click="mostrarVistaPrevia = !mostrarVistaPrevia">
           {{ mostrarVistaPrevia ? 'Ocultar' : 'Mostrar' }} vista previa
-        </button>
+        </el-button>
       </div>
-    </form>
+    </el-form>
 
     <!-- v-show demuestra ocultar/mostrar sin desmontar el bloque del DOM -->
-    <div v-show="mostrarVistaPrevia" class="vista-previa seccion">
+    <div v-show="mostrarVistaPrevia" class="vista-previa">
       <h4>Vista previa en tiempo real</h4>
       <p><strong>Título:</strong> {{ nuevoLibro.titulo || 'Sin título' }}</p>
       <p><strong>Autor:</strong> {{ nuevoLibro.autor || 'Autor no especificado' }}</p>
@@ -96,7 +88,8 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { reactive, ref, computed } from 'vue'
 import { CATEGORIAS, TIPOS_POR_CATEGORIA } from '@/store/modules/libros'
 
 const LIBRO_VACIO = {
@@ -108,50 +101,41 @@ const LIBRO_VACIO = {
   fechaPublicacion: ''
 }
 
-export default {
-  name: 'LibroFormulario',
-  emits: ['agregar-libro'],
-  data() {
-    return {
-      nuevoLibro: { ...LIBRO_VACIO },
-      categorias: CATEGORIAS,
-      errores: [],
-      mostrarVistaPrevia: true
-    }
-  },
-  computed: {
-    tiposDisponibles() {
-      return TIPOS_POR_CATEGORIA[this.nuevoLibro.categoria] || []
-    }
-  },
-  methods: {
-    validar() {
-      const errores = []
-      if (!this.nuevoLibro.titulo.trim()) {
-        errores.push('Debes ingresar el título del libro.')
-      }
-      if (!this.nuevoLibro.autor.trim()) {
-        errores.push('Debes ingresar el autor del libro.')
-      }
-      if (!this.nuevoLibro.categoria) {
-        errores.push('Debes seleccionar una categoría.')
-      }
-      if (this.nuevoLibro.categoria && !this.nuevoLibro.tipo) {
-        errores.push('Debes seleccionar un tipo.')
-      }
-      this.errores = errores
-      return errores.length === 0
-    },
-    manejarEnvio() {
-      if (!this.validar()) return
+const emit = defineEmits(['agregar-libro'])
 
-      this.$emit('agregar-libro', { ...this.nuevoLibro })
-      this.reiniciarFormulario()
-    },
-    reiniciarFormulario() {
-      this.nuevoLibro = { ...LIBRO_VACIO }
-      this.errores = []
-    }
+const nuevoLibro = reactive({ ...LIBRO_VACIO })
+const errores = ref([])
+const mostrarVistaPrevia = ref(true)
+
+const tiposDisponibles = computed(() => TIPOS_POR_CATEGORIA[nuevoLibro.categoria] || [])
+
+function validar() {
+  const encontrados = []
+  if (!nuevoLibro.titulo.trim()) {
+    encontrados.push('Debes ingresar el título del libro.')
   }
+  if (!nuevoLibro.autor.trim()) {
+    encontrados.push('Debes ingresar el autor del libro.')
+  }
+  if (!nuevoLibro.categoria) {
+    encontrados.push('Debes seleccionar una categoría.')
+  }
+  if (nuevoLibro.categoria && !nuevoLibro.tipo) {
+    encontrados.push('Debes seleccionar un tipo.')
+  }
+  errores.value = encontrados
+  return encontrados.length === 0
+}
+
+function reiniciarFormulario() {
+  Object.assign(nuevoLibro, LIBRO_VACIO)
+  errores.value = []
+}
+
+function manejarEnvio() {
+  if (!validar()) return
+
+  emit('agregar-libro', { ...nuevoLibro })
+  reiniciarFormulario()
 }
 </script>
