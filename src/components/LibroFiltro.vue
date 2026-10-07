@@ -70,3 +70,35 @@ function limpiarFiltros() {
   emit('actualizar:filtros', { autor: '', categoria: '', soloFavoritos: false })
 }
 </script>
+
+<style scoped>
+.filtro {
+  margin-bottom: 1rem;
+}
+
+.filtro__campos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1rem;
+  align-items: flex-end;
+}
+
+.filtro__campos .el-form-item {
+  min-width: 200px;
+  margin-bottom: 0.5rem;
+}
+
+.filtro__campos .el-select {
+  width: 100%;
+}
+
+.filtro__campos .filtro__limpiar {
+  min-width: auto;
+}
+
+@media (max-width: 600px) {
+  .filtro__campos .el-form-item {
+    min-width: 100%;
+  }
+}
+</style>
