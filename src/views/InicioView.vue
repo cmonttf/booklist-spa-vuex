@@ -27,42 +27,54 @@
       />
 
       <div v-else class="indicadores-grid">
-        <el-card shadow="hover" class="indicador">
-          <h3>📚 Total de libros</h3>
+        <TarjetaIndicador>
+          <template #titulo>📚 Total de libros</template>
           <p class="indicador__valor">{{ totalLibros }}</p>
           <p class="indicador__descripcion">Libros registrados en el sistema</p>
-        </el-card>
+        </TarjetaIndicador>
 
-        <el-card shadow="hover" class="indicador">
-          <h3>⭐ Favoritos</h3>
+        <TarjetaIndicador color="var(--el-color-warning)">
+          <template #titulo>⭐ Favoritos</template>
           <p class="indicador__valor">{{ totalFavoritos }}</p>
           <p class="indicador__descripcion">Libros marcados como favoritos</p>
-        </el-card>
+        </TarjetaIndicador>
 
-        <el-card shadow="hover" class="indicador">
-          <h3>🏷️ Por categoría</h3>
+        <TarjetaIndicador color="var(--el-color-success)">
+          <template #titulo>🏷️ Por categoría</template>
           <ul class="indicador__lista">
             <li v-for="(cantidad, categoria) in librosPorCategoria" :key="categoria">
-              <span>{{ categoria }}</span> <strong>{{ cantidad }}</strong>
+              <div class="indicador__fila">
+                <span>{{ categoria }}</span> <strong>{{ cantidad }}</strong>
+              </div>
+              <!-- Style binding: el ancho de la barra es el % del total -->
+              <div class="indicador__barra">
+                <span
+                  class="indicador__barra-relleno"
+                  :style="{ width: porcentaje(cantidad) + '%' }"
+                  :data-porcentaje="porcentaje(cantidad)"
+                ></span>
+              </div>
             </li>
           </ul>
-        </el-card>
+        </TarjetaIndicador>
 
-        <el-card shadow="hover" class="indicador">
-          <h3>🎯 Por tipo</h3>
+        <TarjetaIndicador color="var(--color-acento)">
+          <template #titulo>🎯 Por tipo</template>
           <ul v-if="Object.keys(librosPorTipo).length" class="indicador__lista">
             <li v-for="(cantidad, tipo) in librosPorTipo" :key="tipo">
-              <span>{{ tipo }}</span> <strong>{{ cantidad }}</strong>
+              <div class="indicador__fila">
+                <span>{{ tipo }}</span> <strong>{{ cantidad }}</strong>
+              </div>
             </li>
           </ul>
           <p v-else class="texto-secundario">Aún no hay libros clasificados por tipo.</p>
-        </el-card>
+        </TarjetaIndicador>
 
-        <el-card shadow="hover" class="indicador">
-          <h3>📈 Promedio por categoría</h3>
+        <TarjetaIndicador color="var(--el-color-info)">
+          <template #titulo>📈 Promedio por categoría</template>
           <p class="indicador__valor">{{ promedioLibrosPorCategoria.toFixed(2) }}</p>
           <p class="indicador__descripcion">Libros promedio por cada categoría</p>
-        </el-card>
+        </TarjetaIndicador>
       </div>
     </section>
   </div>
@@ -72,6 +84,7 @@
 import { computed, onMounted, reactive, watch } from 'vue'
 import { useStore } from 'vuex'
 import { CATEGORIAS } from '@/store/modules/libros'
+import TarjetaIndicador from '@/components/TarjetaIndicador.vue'
 
 const nombreApp = 'BookList'
 const descripcionApp = 'Un gestor de libros interactivo construido con Vue.js, pensado para practicar componentes, reactividad y enrutamiento.'
@@ -112,6 +125,10 @@ const librosPorTipo = computed(() => {
 
 const promedioLibrosPorCategoria = computed(() => totalLibros.value / CATEGORIAS.length)
 
+function porcentaje(cantidad) {
+  return totalLibros.value ? Math.round((cantidad / totalLibros.value) * 100) : 0
+}
+
 // La carga es asíncrona (dispatch en App.vue), así que el conteo real solo se
 // conoce cuando 'loading' pasa de true a false.
 watch(loading, (actual, anterior) => {
@@ -125,3 +142,60 @@ onMounted(() => {
   console.log('👤 Usuario:', usuario.nombre)
 })
 </script>
+
+<style scoped>
+.indicadores-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.indicador__valor {
+  font-size: 2.2rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.indicador__descripcion {
+  margin: 0.3rem 0 0;
+  color: var(--el-text-color-secondary);
+  font-size: 0.85rem;
+}
+
+.indicador__lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.indicador__lista li {
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.indicador__lista li:last-child {
+  border-bottom: none;
+}
+
+.indicador__fila {
+  display: flex;
+  justify-content: space-between;
+}
+
+.indicador__barra {
+  height: 6px;
+  margin-top: 0.3rem;
+  border-radius: 999px;
+  background-color: var(--el-fill-color);
+  overflow: hidden;
+}
+
+.indicador__barra-relleno {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background-color: var(--el-color-success);
+  transition: width 0.3s ease-in-out;
+}
+</style>
