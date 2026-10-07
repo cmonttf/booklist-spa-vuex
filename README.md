@@ -103,15 +103,14 @@ necesitan servidor ni API: Axios se reemplaza con `jest.mock('@/api')`.
 npm run test:unit
 ```
 
-**End-to-end** (Cypress). El script levanta solo el servidor de desarrollo,
-espera a que responda en `http://localhost:8080`, ejecuta Cypress en modo
-headless y apaga el servidor al terminar. La API se simula con `cy.intercept`
-y el fixture `tests/e2e/fixtures/libros.json`, así que **no** hace falta
-`npm run mock`.
+**End-to-end** (Cypress, con el plugin oficial `@vue/cli-plugin-e2e-cypress`).
+`vue-cli-service test:e2e` levanta solo el servidor, ejecuta Cypress contra él
+y lo apaga al terminar. La API se simula con `cy.intercept` y el fixture
+`tests/e2e/fixtures/libros.json`, así que **no** hace falta `npm run mock`.
 
 ```bash
-npm run test:e2e        # headless, para consola/CI
-npm run cypress:open    # modo interactivo (requiere "npm run serve" en otra terminal)
+npm run test:e2e        # vue-cli-service test:e2e --headless (consola/CI)
+npm run test:e2e:open   # vue-cli-service test:e2e (interfaz gráfica de Cypress)
 ```
 
 | Archivo | Tipo | Qué valida |
@@ -119,7 +118,8 @@ npm run cypress:open    # modo interactivo (requiere "npm run serve" en otra ter
 | [tests/unit/Libro.spec.js](./tests/unit/Libro.spec.js) | Unitaria | Render correcto de la tarjeta (`Libro.vue`, equivalente a `<ProductCard>`): título, autor, categoría · tipo, año, descripción, estilo destacado, texto alternativo sin descripción, estado de favorito y evento `alternar-favorito`. |
 | [tests/unit/ListaLibros.spec.js](./tests/unit/ListaLibros.spec.js) | Unitaria | Respuesta visual ante error de API: con `api.get` rechazado se muestra la alerta de error y ninguna tarjeta; el botón "Reintentar" vuelve a cargar y muestra los libros. |
 | [tests/unit/store.spec.js](./tests/unit/store.spec.js) | Unitaria | Getter `libros/filtrados` (categoría, autor, solo favoritos), persistencia de favoritos en `localStorage` y limpieza del favorito al eliminar un libro. |
-| [tests/unit/NotFound.spec.js](./tests/unit/NotFound.spec.js) | Unitaria | La ruta comodín resuelve a la 404, que muestra la URL pedida y vuelve al inicio. |
+| [tests/unit/NotFound.spec.js](./tests/unit/NotFound.spec.js) | Unitaria | La ruta comodín resuelve a la 404, que muestra la URL pedida y vuelve al inicio; la cuenta regresiva redirige a los 10 s (timers simulados con `jest.useFakeTimers`) y el intervalo se limpia en `onBeforeUnmount`. |
+| [tests/unit/TarjetaIndicador.spec.js](./tests/unit/TarjetaIndicador.spec.js) | Unitaria | Slot con nombre (`titulo`) y slot por defecto, y style binding del color recibido por prop. |
 | [tests/e2e/specs/filtrar-libros.cy.js](./tests/e2e/specs/filtrar-libros.cy.js) | E2E | El usuario filtra por categoría y ve solo los resultados que coinciden; combina filtros, ve el estado vacío y limpia los filtros. También recorre la página 404. |
 
 Resultado de la última ejecución:
@@ -127,11 +127,12 @@ Resultado de la última ejecución:
 ```text
 $ npm run test:unit
 PASS tests/unit/store.spec.js
-PASS tests/unit/NotFound.spec.js
+PASS tests/unit/TarjetaIndicador.spec.js
 PASS tests/unit/Libro.spec.js
+PASS tests/unit/NotFound.spec.js
 PASS tests/unit/ListaLibros.spec.js
-Test Suites: 4 passed, 4 total
-Tests:       11 passed, 11 total
+Test Suites: 5 passed, 5 total
+Tests:       15 passed, 15 total
 
 $ npm run test:e2e
   Filtrar el catálogo de libros
@@ -158,13 +159,14 @@ booklist-spa/
 │   ├── api/
 │   │   └── index.js              # Instancia de Axios (baseURL de json-server)
 │   ├── assets/
-│   │   └── estilos.css           # Layout propio sobre las variables --el-* de Element Plus
+│   │   └── estilos.css           # Solo estilos globales (cada componente usa <style scoped>)
 │   ├── components/
 │   │   ├── AppHeader.vue         # Encabezado: navegación, switch de tema, ayuda
 │   │   ├── AppFooter.vue         # Pie de página
 │   │   ├── Libro.vue             # Tarjeta reutilizable de un libro (ProductCard)
 │   │   ├── LibroFormulario.vue   # Formulario para agregar libros
-│   │   └── LibroFiltro.vue       # Filtro por autor, categoría y favoritos
+│   │   ├── LibroFiltro.vue       # Filtro por autor, categoría y favoritos
+│   │   └── TarjetaIndicador.vue  # Tarjeta del dashboard con slots y style binding
 │   ├── composables/
 │   │   └── useTema.js            # Tema claro/oscuro (estado compartido con ref)
 │   ├── router/
@@ -241,8 +243,9 @@ queda ningún componente con Options API (`data`, `methods`, `computed:{}`).
 | `ref` / `reactive` | `LibroFormulario.vue` (`reactive(nuevoLibro)`, `ref(errores)`), `App.vue` (`ref(bienvenidaVisible)`), `InicioView.vue` (`reactive(usuario)`) |
 | `computed` | Todas las vistas leen Vuex con `computed(() => store.getters[...])`; indicadores del dashboard; `tiposDisponibles` del formulario |
 | `watch` | `InicioView.vue` (detecta el fin de la carga) y `useTema.js` (aplica y guarda el tema) |
-| `onMounted` | `App.vue` (despacha `libros/cargar`) e `InicioView.vue` |
-| `defineProps` / `defineEmits` | `Libro.vue`, `LibroFiltro.vue`, `LibroFormulario.vue`, `AppHeader.vue`, `DetalleLibro.vue` |
+| `onMounted` | `App.vue` (despacha `libros/cargar`), `InicioView.vue` y `NotFound.vue` (inicia la cuenta regresiva) |
+| `onBeforeUnmount` | `NotFound.vue`: limpia el `setInterval` de la cuenta regresiva si el usuario sale antes de que termine |
+| `defineProps` / `defineEmits` | `Libro.vue`, `LibroFiltro.vue`, `LibroFormulario.vue`, `AppHeader.vue`, `DetalleLibro.vue`, `TarjetaIndicador.vue` |
 | `useStore()` (Vuex) | `App.vue`, `AppHeader.vue` y todas las vistas |
 | `useRoute()` / `useRouter()` | `NotFound.vue` |
 | Composable propio | [src/composables/useTema.js](./src/composables/useTema.js): `useTema()` devuelve un `ref` `oscuro` compartido por toda la app |
@@ -253,6 +256,7 @@ queda ningún componente con Options API (`data`, `methods`, `computed:{}`).
 |---|---|---|---|
 | `AppHeader.vue` | — | `ayuda` | Marca, navegación con contador de favoritos (`el-badge`), switch de tema claro/oscuro (`useTema`) y botón "Ayuda inicial" (`@click.once`). |
 | `AppFooter.vue` | — | — | Pie de página. |
+| `TarjetaIndicador.vue` | `color` (string) | — | Tarjeta del dashboard. Expone un **slot con nombre** `titulo` y un **slot por defecto** para el contenido, y aplica el color por **style binding** (`:style="{ borderTopColor: color }"`). |
 | `Libro.vue` | `libro` (objeto), `mostrarBotonEliminar` (bool), `esFavorito` (bool) | `eliminar`, `alternar-favorito` (id del libro) | Tarjeta (`el-card`) con título, autor, categoría · tipo, año y descripción; botón de favorito y confirmación (`el-popconfirm`) antes de eliminar. Cumple el rol de `<ProductCard>` de la consigna. |
 | `LibroFormulario.vue` | — | `agregar-libro` (datos del nuevo libro) | Formulario completo: título, autor, categoría, tipo (dependiente de la categoría), año opcional y descripción opcional. Valida y muestra vista previa en vivo. |
 | `LibroFiltro.vue` | `filtros` (objeto `{ autor, categoria, soloFavoritos }`) | `actualizar:filtros` (nuevo objeto de filtros) | Campos de filtro por autor, categoría y "solo favoritos". Nunca modifica la prop directamente: emite el nuevo valor y el padre decide qué hacer con él. |
@@ -388,10 +392,19 @@ el idioma español (`element-plus/es/locale/lang/es`). Componentes usados:
   elección guardada en `localStorage` o, si no hay, de
   `prefers-color-scheme`. `main.js` importa el composable antes de montar la
   app para evitar un parpadeo. El switch está en `AppHeader.vue`.
-- **Estilos propios:** [estilos.css](./src/assets/estilos.css) solo define el
-  layout (encabezado, grillas, tarjetas) y usa las variables `--el-*` de
-  Element Plus en vez de colores fijos, así que todo cambia junto con el tema.
-  También redefine `--el-color-primary` con el azul de la marca.
+- **Estilos propios:** cada componente define sus estilos en su propio
+  `<style scoped>`, para que no se filtren a otros componentes. Cuando hay que
+  alcanzar un elemento interno de Element Plus se usa `:deep()` (por ejemplo,
+  `.tarjeta-libro :deep(.el-card__body)` en `Libro.vue`).
+  [estilos.css](./src/assets/estilos.css) queda solo con lo global: variables
+  de tema, base y layout compartido (`.contenedor`, `.seccion`). Todo usa las
+  variables `--el-*` de Element Plus en vez de colores fijos, así que cambia
+  junto con el tema. También redefine `--el-color-primary` con el azul de la
+  marca.
+- **Class y style binding:** `Libro.vue` destaca los libros técnicos con
+  `v-bind:class`; el dashboard usa `:style` para el color de cada
+  `TarjetaIndicador` y para el ancho de las barras de porcentaje por
+  categoría (`:style="{ width: porcentaje(cantidad) + '%' }"`).
 - **Responsive:** grillas con `auto-fill`/`auto-fit` + `minmax()` y un
   breakpoint a 600px que apila el encabezado y los filtros.
 
@@ -497,9 +510,10 @@ Ver tabla de rutas más arriba. Rutas dinámicas con `props: true`, navegación
   en `Libro.vue` o `agregar-libro` en `LibroFormulario.vue`.
 - **Por qué Vue CLI y no Vite:** el proyecto exige explícitamente una
   configuración basada en Vue CLI. El build se gestiona con `@vue/cli-service`
-  (scripts `vue-cli-service serve` / `build` / `test:unit`) junto a los
-  plugins oficiales `@vue/cli-plugin-babel`, `@vue/cli-plugin-router`,
-  `@vue/cli-plugin-vuex` y `@vue/cli-plugin-unit-jest`. No hay
+  (scripts `vue-cli-service serve` / `build` / `test:unit` / `test:e2e`) junto
+  a los plugins oficiales `@vue/cli-plugin-babel`, `@vue/cli-plugin-router`,
+  `@vue/cli-plugin-vuex`, `@vue/cli-plugin-unit-jest` y
+  `@vue/cli-plugin-e2e-cypress`. No hay
   `webpack.config.js`. Los ajustes propios (puerto, título de la página)
   viven en `vue.config.js` mediante `defineConfig`, sin depender del
   ecosistema Vite en ningún punto (no se usa `vite.config.js` ni
@@ -526,6 +540,6 @@ Ver tabla de rutas más arriba. Rutas dinámicas con `props: true`, navegación
 - **Pruebas:** Jest se integra con `@vue/cli-plugin-unit-jest` (preset oficial
   de Vue CLI). `jest.config.js` amplía `transformIgnorePatterns` para
   transformar `@vueuse`, dependencia de Element Plus que solo se publica como
-  ES modules. Para e2e se eligió Cypress con `start-server-and-test` y
-  `cy.intercept`, de modo que la prueba es repetible y no depende de
-  `db.json` ni de `json-server`.
+  ES modules. Para e2e se eligió Cypress con `@vue/cli-plugin-e2e-cypress`
+  (que levanta y apaga el servidor por su cuenta) y `cy.intercept`, de modo
+  que la prueba es repetible y no depende de `db.json` ni de `json-server`.
