@@ -11,7 +11,7 @@
     />
 
     <el-card v-else-if="libro" shadow="never" class="detalle-libro">
-      <div class="tarjeta-libro__cabecera">
+      <div class="detalle-libro__cabecera">
         <el-tag effect="plain">{{ libro.categoria }} · {{ libro.tipo }}</el-tag>
         <el-button :type="favorito ? 'warning' : 'default'" @click="alternarFavorito">
           {{ favorito ? '★ En favoritos' : '☆ Marcar como favorito' }}
@@ -63,3 +63,17 @@ function alternarFavorito() {
   store.dispatch('favoritos/alternar', props.id)
 }
 </script>
+
+<style scoped>
+.detalle-libro__cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.detalle-libro h2 {
+  margin-bottom: 0.5rem;
+}
+</style>
