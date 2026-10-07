@@ -139,3 +139,41 @@ function manejarEnvio() {
   reiniciarFormulario()
 }
 </script>
+
+<style scoped>
+.formulario__grilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  column-gap: 1rem;
+}
+
+.formulario .el-select {
+  width: 100%;
+}
+
+.formulario__error {
+  margin-bottom: 0.5rem;
+}
+
+.formulario__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.formulario__acciones .el-button + .el-button {
+  margin-left: 0;
+}
+
+.vista-previa {
+  margin-top: 1rem;
+  border: 1px dashed var(--el-color-primary);
+  border-radius: var(--el-border-radius-base);
+  padding: 1rem;
+  background-color: var(--el-color-primary-light-9);
+}
+
+.vista-previa h4 {
+  margin-top: 0;
+}
+</style>
