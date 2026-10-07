@@ -1,11 +1,29 @@
+/*
+ * Estilos propios de layout. Los componentes visuales (botones, inputs,
+ * tarjetas, alertas) vienen de Element Plus; aquí solo se usan sus variables
+ * --el-* para que el tema oscuro (clase "dark" en <html>) aplique a todo.
+ */
 :root {
-  --color-primario: #2c5f9b;
-  --color-primario-oscuro: #204a7a;
+  --el-color-primary: #2c5f9b;
+  --el-color-primary-light-3: #6b8fb9;
+  --el-color-primary-light-5: #95afcd;
+  --el-color-primary-light-7: #c0cfe1;
+  --el-color-primary-light-8: #d5dfeb;
+  --el-color-primary-light-9: #eaeff5;
+  --el-color-primary-dark-2: #234c7c;
   --color-acento: #e8763a;
-  --color-fondo: #f4f6f9;
-  --color-texto: #232830;
-  --color-borde: #d7dde5;
-  --radio: 8px;
+  --color-encabezado: #2c5f9b;
+}
+
+html.dark {
+  --el-color-primary: #5b8fd0;
+  --el-color-primary-light-3: #45709f;
+  --el-color-primary-light-5: #375a7f;
+  --el-color-primary-light-7: #2a435f;
+  --el-color-primary-light-8: #233850;
+  --el-color-primary-light-9: #1c2c40;
+  --el-color-primary-dark-2: #7ca6d9;
+  --color-encabezado: #1b2a3d;
 }
 
 * {
@@ -15,8 +33,8 @@
 body {
   margin: 0;
   font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  background-color: var(--color-fondo);
-  color: var(--color-texto);
+  background-color: var(--el-bg-color-page);
+  color: var(--el-text-color-primary);
 }
 
 #app {
@@ -26,7 +44,7 @@ body {
 }
 
 a {
-  color: var(--color-primario);
+  color: var(--el-color-primary);
 }
 
 .contenedor {
@@ -36,14 +54,22 @@ a {
   padding: 1.5rem;
 }
 
+.contenedor--aviso {
+  padding-bottom: 0;
+}
+
+.contenido-principal {
+  flex: 1;
+}
+
 /* Encabezado y navegación */
 .encabezado {
-  background-color: var(--color-primario);
+  background-color: var(--color-encabezado);
   color: #fff;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
-.encabezado .contenedor {
+.encabezado__contenido {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -59,6 +85,12 @@ a {
   margin: 0;
 }
 
+.encabezado__acciones {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .navegacion {
   display: flex;
   gap: 1rem;
@@ -66,11 +98,14 @@ a {
 }
 
 .navegacion a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   color: #eaf1fb;
   text-decoration: none;
   font-weight: 600;
   padding: 0.35rem 0.75rem;
-  border-radius: var(--radio);
+  border-radius: var(--el-border-radius-base);
   transition: background-color 0.15s ease-in-out;
 }
 
@@ -83,83 +118,61 @@ a {
   color: #fff;
 }
 
-.contenido-principal {
-  flex: 1;
-}
-
-/* Botones */
-.boton {
-  display: inline-block;
+.navegacion__badge .el-badge__content {
   border: none;
-  border-radius: var(--radio);
-  padding: 0.55rem 1.1rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  text-decoration: none;
-  transition: filter 0.15s ease-in-out;
 }
 
-.boton:hover {
-  filter: brightness(0.92);
+/* Secciones */
+.seccion {
+  margin-bottom: 2rem;
 }
 
-.boton--primario {
-  background-color: var(--color-primario);
-  color: #fff;
+.seccion__titulo {
+  margin-bottom: 0.75rem;
+  color: var(--el-color-primary-dark-2);
 }
 
-.boton--acento {
-  background-color: var(--color-acento);
-  color: #fff;
+.texto-secundario {
+  color: var(--el-text-color-secondary);
+  font-style: italic;
 }
 
-.boton--peligro {
-  background-color: #c0392b;
-  color: #fff;
-}
-
-.boton--secundario {
-  background-color: #fff;
-  color: var(--color-primario);
-  border: 1px solid var(--color-borde);
-}
-
-/* Tarjetas */
-.tarjeta {
-  background-color: #fff;
-  border: 1px solid var(--color-borde);
-  border-radius: var(--radio);
-  padding: 1.1rem 1.25rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-}
-
-.tarjeta-libro {
+/* Tarjeta de libro */
+.tarjeta-libro .el-card__body {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.4rem;
+  height: 100%;
 }
 
-.tarjeta-libro__categoria {
-  align-self: flex-start;
-  background-color: #eef3fa;
-  color: var(--color-primario);
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
+.tarjeta-libro p {
+  margin: 0;
 }
 
 .tarjeta-libro--destacada {
   border-left: 4px solid var(--color-acento);
 }
 
+.tarjeta-libro__cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.tarjeta-libro__titulo {
+  margin: 0.3rem 0 0.2rem;
+}
+
 .tarjeta-libro__acciones {
   display: flex;
   gap: 0.6rem;
-  margin-top: 0.4rem;
+  margin-top: auto;
+  padding-top: 0.6rem;
+}
+
+.tarjeta-libro__acciones .el-button + .el-button {
+  margin-left: 0;
 }
 
 .rejilla-libros {
@@ -169,79 +182,93 @@ a {
 }
 
 /* Formulario */
-.formulario {
+.formulario__grilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  column-gap: 1rem;
+}
+
+.formulario .el-select {
+  width: 100%;
+}
+
+.formulario__error {
+  margin-bottom: 0.5rem;
+}
+
+.formulario__acciones {
   display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
-.campo {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-
-.campo label {
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.campo input,
-.campo select,
-.campo textarea {
-  padding: 0.5rem 0.65rem;
-  border: 1px solid var(--color-borde);
-  border-radius: var(--radio);
-  font-size: 0.95rem;
-  font-family: inherit;
-}
-
-.campo textarea {
-  resize: vertical;
-  min-height: 80px;
-}
-
-.mensaje-error {
-  color: #c0392b;
-  font-size: 0.85rem;
-  margin: 0;
-}
-
-.mensaje-vacio {
-  text-align: center;
-  padding: 2rem 1rem;
-  color: #6b7683;
-  font-style: italic;
-}
-
-.seccion {
-  margin-bottom: 2rem;
-}
-
-.seccion__titulo {
-  margin-bottom: 0.75rem;
-  color: var(--color-primario-oscuro);
+.formulario__acciones .el-button + .el-button {
+  margin-left: 0;
 }
 
 .vista-previa {
-  border: 1px dashed var(--color-primario);
-  border-radius: var(--radio);
+  margin-top: 1rem;
+  border: 1px dashed var(--el-color-primary);
+  border-radius: var(--el-border-radius-base);
   padding: 1rem;
-  background-color: #eef3fa;
+  background-color: var(--el-color-primary-light-9);
 }
 
+.vista-previa h4 {
+  margin-top: 0;
+}
+
+/* Filtro */
 .filtro {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  align-items: flex-end;
   margin-bottom: 1rem;
 }
 
-.filtro .campo {
-  min-width: 180px;
+.filtro__campos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1rem;
+  align-items: flex-end;
 }
 
+.filtro__campos .el-form-item {
+  min-width: 200px;
+  margin-bottom: 0.5rem;
+}
+
+.filtro__campos .el-select {
+  width: 100%;
+}
+
+.filtro__limpiar {
+  min-width: auto !important;
+}
+
+/* Alertas */
+.alerta__mensaje {
+  margin: 0.25rem 0 0;
+}
+
+.alerta__accion {
+  margin-top: 0.5rem;
+}
+
+/* Detalle y 404 */
+.detalle-libro h2 {
+  margin-bottom: 0.5rem;
+}
+
+.acciones-404 {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.acciones-404 .el-button + .el-button {
+  margin-left: 0;
+}
+
+/* Dashboard */
 .indicadores-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -251,7 +278,7 @@ a {
 
 .indicador h3 {
   margin: 0 0 0.6rem;
-  color: var(--color-primario-oscuro);
+  color: var(--el-color-primary-dark-2);
   font-size: 1rem;
 }
 
@@ -263,7 +290,7 @@ a {
 
 .indicador__descripcion {
   margin: 0.3rem 0 0;
-  color: #6b7683;
+  color: var(--el-text-color-secondary);
   font-size: 0.85rem;
 }
 
@@ -277,7 +304,7 @@ a {
   display: flex;
   justify-content: space-between;
   padding: 0.3rem 0;
-  border-bottom: 1px solid var(--color-borde);
+  border-bottom: 1px solid var(--el-border-color-lighter);
 }
 
 .indicador__lista li:last-child {
@@ -287,13 +314,26 @@ a {
 .pie-pagina {
   text-align: center;
   padding: 1rem;
-  color: #6b7683;
+  color: var(--el-text-color-secondary);
   font-size: 0.85rem;
 }
 
+/* Responsive */
 @media (max-width: 600px) {
-  .encabezado .contenedor {
+  .contenedor {
+    padding: 1rem;
+  }
+
+  .encabezado__contenido {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .filtro__campos .el-form-item {
+    min-width: 100%;
+  }
+
+  .tarjeta-libro__acciones {
+    flex-wrap: wrap;
   }
 }
