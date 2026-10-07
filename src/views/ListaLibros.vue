@@ -2,65 +2,87 @@
   <div class="contenedor">
     <section class="seccion">
       <h2 class="seccion__titulo">Agregar un nuevo libro</h2>
-      <LibroFormulario @agregar-libro="manejarAgregarLibro" />
+      <el-card shadow="never">
+        <LibroFormulario @agregar-libro="manejarAgregarLibro" />
+      </el-card>
     </section>
 
     <section class="seccion">
       <h2 class="seccion__titulo">Catálogo de libros</h2>
-      <LibroFiltro :filtros="filtros" @actualizar:filtros="filtros = $event" />
+      <LibroFiltro :filtros="filtros" @actualizar:filtros="actualizarFiltros" />
 
-      <p v-if="loading" class="mensaje-vacio">Cargando catálogo…</p>
-      <p v-else-if="error" class="mensaje-error">{{ error }}</p>
+      <el-skeleton v-if="loading" :rows="5" animated data-cy="cargando-catalogo" />
 
-      <div v-else-if="librosFiltrados.length" class="rejilla-libros">
+      <el-alert
+        v-else-if="error"
+        type="error"
+        title="Error al cargar el catálogo"
+        show-icon
+        :closable="false"
+        data-cy="error-catalogo"
+      >
+        <!-- El slot por defecto reemplaza a la prop "description" -->
+        <p class="alerta__mensaje">{{ error }}</p>
+        <el-button size="small" class="alerta__accion" @click="cargar">Reintentar</el-button>
+      </el-alert>
+
+      <div v-else-if="libros.length" class="rejilla-libros">
         <Libro
-          v-for="libro in librosFiltrados"
+          v-for="libro in libros"
           :key="libro.id"
           :libro="libro"
+          :es-favorito="esFavorito(libro.id)"
           @eliminar="manejarEliminarLibro"
+          @alternar-favorito="alternarFavorito"
         />
       </div>
-      <p v-else class="mensaje-vacio">No hay libros disponibles.</p>
+
+      <el-empty
+        v-else
+        :description="filtrosActivos ? 'Ningún libro coincide con los filtros.' : 'No hay libros disponibles.'"
+        data-cy="catalogo-vacio"
+      />
     </section>
   </div>
 </template>
 
-<script>
-import { mapGetters, mapActions } from 'vuex'
+<script setup>
+import { computed } from 'vue'
+import { useStore } from 'vuex'
+import { ElMessage } from 'element-plus'
 import Libro from '@/components/Libro.vue'
 import LibroFormulario from '@/components/LibroFormulario.vue'
 import LibroFiltro from '@/components/LibroFiltro.vue'
 
-export default {
-  name: 'ListaLibros',
-  components: { Libro, LibroFormulario, LibroFiltro },
-  data() {
-    return {
-      filtros: {
-        autor: '',
-        categoria: ''
-      }
-    }
-  },
-  computed: {
-    ...mapGetters('libros', { libros: 'items', loading: 'loading', error: 'error' }),
-    librosFiltrados() {
-      const autorBuscado = this.filtros.autor.trim().toLowerCase()
-      return this.libros.filter(libro => {
-        const coincideAutor = !autorBuscado || libro.autor.toLowerCase().includes(autorBuscado)
-        const coincideCategoria = !this.filtros.categoria || libro.categoria === this.filtros.categoria
-        return coincideAutor && coincideCategoria
-      })
-    }
-  },
-  methods: {
-    ...mapActions('libros', { agregarLibro: 'agregar', eliminarLibro: 'eliminar' }),
-    manejarAgregarLibro(datosLibro) {
-      this.agregarLibro(datosLibro)
-    },
-    manejarEliminarLibro(idLibro) {
-      this.eliminarLibro(idLibro)
-    }
+const store = useStore()
+
+// 'filtrados' ya aplica autor, categoría y "solo favoritos" (getter de Vuex).
+const libros = computed(() => store.getters['libros/filtrados'])
+const loading = computed(() => store.getters['libros/loading'])
+const error = computed(() => store.getters['libros/error'])
+const filtros = computed(() => store.state.filtros)
+const filtrosActivos = computed(() => store.getters['filtros/activos'])
+const esFavorito = id => store.getters['favoritos/esFavorito'](id)
+
+const cargar = () => store.dispatch('libros/cargar')
+const actualizarFiltros = nuevos => store.dispatch('filtros/actualizar', nuevos)
+const alternarFavorito = id => store.dispatch('favoritos/alternar', id)
+
+async function manejarAgregarLibro(datosLibro) {
+  try {
+    await store.dispatch('libros/agregar', datosLibro)
+    ElMessage.success(`"${datosLibro.titulo}" se agregó al catálogo.`)
+  } catch {
+    ElMessage.error('No se pudo guardar el libro. ¿Está corriendo "npm run mock"?')
+  }
+}
+
+async function manejarEliminarLibro(idLibro) {
+  try {
+    await store.dispatch('libros/eliminar', idLibro)
+    ElMessage.success('Libro eliminado.')
+  } catch {
+    ElMessage.error('No se pudo eliminar el libro.')
   }
 }
 </script>
